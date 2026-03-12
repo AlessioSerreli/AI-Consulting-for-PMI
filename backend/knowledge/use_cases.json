@@ -1,0 +1,66 @@
+[
+  {
+    "sector": "manifattura",
+    "problem": "Gestione ordini completamente manuale con Excel",
+    "analysis": "L'azienda perde 15+ ore/settimana in inserimento dati, errori frequenti, nessuna visibilità in tempo reale",
+    "solution": "Implementazione sistema di gestione ordini con AI per automazione inserimento e prioritizzazione",
+    "tools": ["Make.com", "Google Sheets + AppScript", "Notion + AI"],
+    "expected_results": "Riduzione 70% tempo inserimento, errori quasi zero, visibilità real-time"
+  },
+  {
+    "sector": "manifattura",
+    "problem": "Reportistica settimanale richiede 8 ore di lavoro manuale",
+    "analysis": "I dati sono distribuiti su più sistemi, il report viene assemblato manualmente ogni lunedì",
+    "solution": "Dashboard automatica con aggregazione dati e AI per analisi e commenti",
+    "tools": ["Google Looker Studio", "Make.com", "Claude API"],
+    "expected_results": "Report generato automaticamente ogni lunedì mattina, riduzione da 8h a 30min"
+  },
+  {
+    "sector": "retail",
+    "problem": "Gestione comunicazione clienti inefficiente via WhatsApp personale",
+    "analysis": "Nessuna storicità, risposte ritardate, nessuna possibilità di scaling",
+    "solution": "Sistema di customer service AI con WhatsApp Business + chatbot",
+    "tools": ["WhatsApp Business API", "ManyChat", "Claude API"],
+    "expected_results": "Risposta immediata H24, riduzione 60% richieste manuali, storico centralizzato"
+  },
+  {
+    "sector": "retail",
+    "problem": "Inventario gestito manualmente con errori e stockout frequenti",
+    "analysis": "Perdita di vendite per mancanza prodotti, eccesso di altri. Nessuna previsione domanda.",
+    "solution": "Sistema automatizzato di gestione inventario con previsione domanda AI",
+    "tools": ["Google Sheets + AI", "Make.com", "Sistemi POS integrati"],
+    "expected_results": "Riduzione stockout 80%, ottimizzazione capitale immobilizzato"
+  },
+  {
+    "sector": "servizi",
+    "problem": "Proposta commerciale richiede 4-6 ore di preparazione manuale",
+    "analysis": "Ogni proposta è creata da zero, con ricerca clienti, pricing e personalizzazione manuali",
+    "solution": "Template intelligente con AI per personalizzazione automatica proposte",
+    "tools": ["Claude API", "Google Docs + AppScript", "CRM integrato"],
+    "expected_results": "Proposta in 30 minuti, personalizzazione automatica, tasso accettazione +25%"
+  },
+  {
+    "sector": "servizi",
+    "problem": "Onboarding nuovi dipendenti caotico e inconsistente",
+    "analysis": "Nessun processo standardizzato, ogni manager onboarda a modo suo, perdita di 2+ settimane produttività",
+    "solution": "Sistema di onboarding strutturato con AI per formazione personalizzata",
+    "tools": ["Notion", "Claude API", "Loom"],
+    "expected_results": "Onboarding da 2 settimane a 3 giorni, consistenza qualità, riduzione errori"
+  },
+  {
+    "sector": "edilizia",
+    "problem": "Preventivi calcolati manualmente con errori e tempi lunghi",
+    "analysis": "I preventivi richiedono 2-3 giorni, errori costosi, difficile confrontare fornitori",
+    "solution": "Sistema semi-automatizzato per preventivazione con AI",
+    "tools": ["Excel + AI add-on", "Claude API", "Template standardizzati"],
+    "expected_results": "Preventivo in 4 ore, errori ridotti 90%, margini più accurati"
+  },
+  {
+    "sector": "food",
+    "problem": "Gestione social media e comunicazione clienti molto time-intensive",
+    "analysis": "1-2 ore/giorno per rispondere a commenti, DM, creare contenuti. Nessuna strategia.",
+    "solution": "Piano editoriale AI + semi-automazione risposte social",
+    "tools": ["Claude API", "Buffer", "Canva AI"],
+    "expected_results": "Riduzione da 2h a 30min/giorno, qualità contenuti superiore, engagement +40%"
+  }
+]
