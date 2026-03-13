@@ -18,30 +18,50 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 ## Struttura Blocchi
 - [x] BLOCCO 0 — Foundation: struttura progetto, design system, 41 file scaffolded
 - [x] BLOCCO 1 — Survey Engine: survey dinamica 15 domande con logica condizionale, progress bar
-- [x] BLOCCO 2 — AI Scorecard Generator: scoring.py + prompts.py + pdf/generator.py (da testare con API reali)
+- [x] BLOCCO 2 — AI Scorecard Generator: scoring.py + prompts.py + pdf/generator.py
 - [x] BLOCCO 3 — Sales Infrastructure: landing page + thank-you page implementate
 - [x] BLOCCO 3b — CRM: dashboard admin + pipeline lead + clienti attivi implementati
 - [ ] BLOCCO 4 — Core AI Engine (post-MVP)
 
-## Ultimo avanzamento (2026-03-13) — Integrazione completata
-- Dipendenze aggiornate per Python 3.14: `pydantic>=2.12.0`, `supabase==2.9.1`, `fastapi>=0.115.0`, `anthropic>=0.40.0`
-- `weasyprint` reso opzionale (richiede GTK su Windows — skip per MVP)
-- Fix email `resend` v2: `to` ora lista, attachment base64 encoded
-- **Backend** gira su `http://localhost:8000` ✅
-- **Frontend** gira su `http://localhost:3000` ✅
-- **Supabase** salva lead correttamente ✅
-- **CRM** endpoint `/crm/stats` e `/crm/leads` funzionanti ✅
-- **Blocco attuale**: Anthropic API → crediti esauriti → scorecard non generata
+## Ultimo avanzamento (2026-03-13) — Test end-to-end completato ✅
+
+### Test completati oggi
+- **Backend** avviato con `python -m uvicorn main:app --reload` ✅
+- **Frontend** avviato con `npm run dev` ✅
+- **Survey completa** → lead salvato in Supabase ✅
+- **CRM frontend** su `/admin`, `/admin/leads`, `/admin/clients` ✅
+- **CRM API** `/crm/stats` e `/crm/leads` funzionanti ✅
+- **Scorecard AI** generata correttamente (crediti Anthropic ricaricati $5) ✅
+- **Email** inviata via Resend ✅
+
+### Fix applicati in questa sessione
+- Aggiunti endpoint `POST /survey/retry-pending` e `POST /survey/resend-email/{lead_id}`
+- `retry-pending`: processa tutti i lead con status `new` che non hanno ricevuto scorecard
+- `resend-email/{lead_id}`: rimanda email a lead già `survey_done` (scorecard già generata)
+- Fix logging errori email (errori ora visibili nel terminale)
+- `FROM_EMAIL` impostato su `onboarding@resend.dev` per testing (sandbox Resend)
+
+### Collaborazione
+- Luigi Negros (`luiginegros`) aggiunto come collaboratore GitHub
+- Branch `develop` creato come branch di integrazione
+- `main` protetto: richiede PR approvata per merge
+- Workflow: `luigi/feature` o `alessio/feature` → PR → `develop` → `main`
+- Luigi: backend (FastAPI) | Alessio: frontend (Next.js)
 
 ## Punto di ripresa (prossima sessione)
-Un solo blocco rimasto prima del test end-to-end completo:
+Il flusso end-to-end funziona completamente. Prossimi step:
 
-1. **Aggiungere crediti Anthropic**: console.anthropic.com → Plans & Billing
-2. **Avviare backend**: `cd backend && python -m uvicorn main:app --reload`
-3. **Avviare frontend**: `cd frontend && npm run dev`
-4. **Test end-to-end completo**: survey → Supabase ✅ → scorecard AI (richiede crediti) → email Resend → admin CRM ✅
+1. **Deploy**: frontend su Vercel, backend su Railway/Render
+2. **Dominio**: verificare `aiconsultingpmi.it` su Resend e aggiornare `FROM_EMAIL` nel `.env` di produzione
+3. **Calendly**: sostituire il link placeholder nel thank-you page con quello reale
+4. **Decisioni da prendere**: nome brand, pricing, lingua survey
 
-**Nota**: uvicorn va lanciato con `python -m uvicorn` (non `uvicorn` direttamente) perché il PATH non include Scripts di Python 3.14
+## Note operative
+- Avviare backend: `cd backend` poi `python -m uvicorn main:app --reload` (usare cmd, non PowerShell)
+- Avviare frontend: `cd frontend` poi `npm run dev` (usare cmd, non PowerShell)
+- Backend su `http://localhost:8000` | Swagger su `http://localhost:8000/docs`
+- Frontend su `http://localhost:3000`
+- Con Resend sandbox (`onboarding@resend.dev`), le mail arrivano solo all'email registrata su resend.com
 
 ## Decisioni architetturali
 - App Router Next.js 14 (non Pages Router)
@@ -56,3 +76,5 @@ Un solo blocco rimasto prima del test end-to-end completo:
 - [ ] Nome brand finale
 - [ ] Pricing per le 4 fasi
 - [ ] Lingua survey (solo italiano o anche inglese?)
+- [ ] Calendly link reale (ora è placeholder)
+- [ ] Deploy: Railway vs Render per il backend
