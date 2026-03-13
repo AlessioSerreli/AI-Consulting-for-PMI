@@ -48,6 +48,58 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 - Workflow: `luigi/feature` o `alessio/feature` → PR → `develop` → `main`
 - Luigi: backend (FastAPI) | Alessio: frontend (Next.js)
 
+## Onboarding Luigi — Benvenuto nel progetto
+
+Ciao Luigi! Questo documento ti racconta tutto quello che è stato fatto e come funziona il progetto.
+
+### Cos'è il progetto
+Una piattaforma web che aiuta le piccole imprese italiane (<50 dipendenti) a capire come l'AI può migliorare il loro lavoro. Il flusso è:
+1. L'imprenditore arriva sulla **landing page**
+2. Compila una **survey** di 15 domande sulla sua azienda
+3. Riceve via email una **scorecard** generata dall'AI con un punteggio e 3 azioni concrete
+4. Noi lo contattiamo per una **call gratuita** → diventa cliente
+
+### I blocchi del progetto (cosa è già fatto)
+
+**BLOCCO 0 — Foundation** ✅
+Struttura del progetto creata da zero: cartelle, file di configurazione, design system (colori, font, componenti base). Non devi toccare nulla qui.
+
+**BLOCCO 1 — Survey Engine** ✅
+La survey dinamica con 15 domande e logica condizionale (alcune domande appaiono solo in base alle risposte precedenti). Ha una progress bar e invia i dati al backend.
+- File chiave: `frontend/app/survey/page.tsx`
+
+**BLOCCO 2 — AI Scorecard Generator** ✅
+Il backend riceve i dati della survey, li manda a Claude AI (Anthropic), che genera un punteggio da 0 a 100 e 3 "quick win" personalizzati. Il risultato viene salvato su Supabase e inviato via email.
+- File chiave: `backend/ai/scoring.py`, `backend/routes/survey.py`
+
+**BLOCCO 3 — Sales Infrastructure** ✅
+La landing page (homepage) e la pagina di ringraziamento dopo la survey.
+- File chiave: `frontend/app/page.tsx`, `frontend/app/thank-you/page.tsx`
+
+**BLOCCO 3b — CRM Admin** ✅
+Dashboard di amministrazione per vedere tutti i lead, il loro stato e i clienti attivi. Solo per uso interno nostro.
+- File chiave: `frontend/app/admin/page.tsx`, `frontend/app/admin/leads/page.tsx`
+
+**BLOCCO 4 — Core AI Engine** ⏳ (post-MVP, non ancora iniziato)
+Espansione delle funzionalità AI. Si farà dopo il lancio.
+
+### Architettura in 30 secondi
+```
+[Utente] → [Frontend Next.js :3000] → [Backend FastAPI :8000] → [Supabase DB]
+                                              ↓
+                                    [Claude AI (Anthropic)]
+                                              ↓
+                                    [Email via Resend]
+```
+
+### Il tuo ruolo
+**Tu gestisci il Frontend** — tutto quello che è in `frontend/`. Alessio gestisce il backend in `backend/`. Non dovrai toccare il backend salvo accordi.
+
+### Prima di iniziare a lavorare
+Chiedi ad Alessio il file `backend/.env` con le chiavi API (non è nel repo per sicurezza). Ti servirà solo se vuoi avviare il backend in locale per testare. Per il frontend puoi lavorare autonomamente.
+
+---
+
 ## Workflow di collaborazione (Alessio + Luigi)
 
 ### Ruoli
