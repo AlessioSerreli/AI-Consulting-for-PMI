@@ -6,7 +6,7 @@ from ai.prompts import IMPLEMENTATION_SYSTEM_PROMPT
 from knowledge.use_cases import get_relevant_use_cases
 
 async def generate_implementation_plan(survey_data: dict, scorecard_data: dict) -> dict:
-    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     sector = survey_data.get("sector", "")
     use_cases = get_relevant_use_cases(sector)
@@ -43,7 +43,7 @@ Genera un piano di implementazione dettagliato in JSON con questa struttura:
   "implementation_notes": "<note importanti>"
 }}"""
 
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=3000,
         system=IMPLEMENTATION_SYSTEM_PROMPT,

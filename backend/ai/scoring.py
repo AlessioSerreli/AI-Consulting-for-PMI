@@ -5,7 +5,7 @@ import re
 from ai.prompts import SCORECARD_SYSTEM_PROMPT, SCORECARD_USER_TEMPLATE
 
 async def generate_scorecard(survey_data: dict) -> dict:
-    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     user_message = SCORECARD_USER_TEMPLATE.format(
         company_name=survey_data.get("company_name", "N/A"),
@@ -22,7 +22,7 @@ async def generate_scorecard(survey_data: dict) -> dict:
         main_goal=survey_data.get("main_goal", "N/A"),
     )
 
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=2000,
         system=SCORECARD_SYSTEM_PROMPT,
