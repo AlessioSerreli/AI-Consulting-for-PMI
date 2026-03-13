@@ -51,8 +51,8 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 ## Workflow di collaborazione (Alessio + Luigi)
 
 ### Ruoli
-- **Alessio** → Frontend (Next.js, pagine, componenti, UI)
-- **Luigi** → Backend (FastAPI, endpoint, logica AI, database)
+- **Alessio** → Backend (FastAPI, endpoint, logica AI, database)
+- **Luigi** → Frontend (Next.js, pagine, componenti, UI)
 
 ### Struttura branch
 ```
@@ -83,6 +83,58 @@ luigi/     ← branch di Luigi (es. luigi/crm-endpoint)
 - Fare `git pull origin develop` prima di iniziare ogni sessione
 - Non modificare mai file dell'area dell'altro senza avvisare
 - Se c'è un conflitto, risolverlo insieme — non fare mai force push
+
+---
+
+## Cheatsheet Git — Comandi sessione
+
+### ALESSIO (Backend — cartella `backend/`)
+
+```bash
+# Inizio sessione
+git checkout develop
+git pull origin develop
+git checkout -b alessio/nome-feature
+
+# Durante il lavoro (ripeti spesso)
+git add backend/
+git commit -m "feat: descrizione"
+
+# Fine sessione — push e PR
+git push origin alessio/nome-feature
+# Poi vai su github.com/AlessioSerreli/AI-Consulting-for-PMI
+# → "Compare & pull request" → base: develop → crea PR → chiedi a Luigi di approvare
+```
+
+### LUIGI (Frontend — cartella `frontend/`)
+
+```bash
+# Inizio sessione
+git checkout develop
+git pull origin develop
+git checkout -b luigi/nome-feature
+
+# Durante il lavoro (ripeti spesso)
+git add frontend/
+git commit -m "feat: descrizione"
+
+# Fine sessione — push e PR
+git push origin luigi/nome-feature
+# Poi vai su github.com/AlessioSerreli/AI-Consulting-for-PMI
+# → "Compare & pull request" → base: develop → crea PR → chiedi ad Alessio di approvare
+```
+
+### Approvare una PR (entrambi)
+1. Vai su github.com/AlessioSerreli/AI-Consulting-for-PMI → tab **Pull Requests**
+2. Apri la PR dell'altro
+3. Clicca **"Add your review"** → **"Approve"** → **"Submit review"**
+4. Clicca **"Merge pull request"**
+
+### Sincronizzarsi dopo un merge
+```bash
+git checkout develop
+git pull origin develop
+```
 
 ## Punto di ripresa (prossima sessione)
 Il flusso end-to-end funziona completamente. Prossimi step:
