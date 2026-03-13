@@ -23,23 +23,25 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 - [x] BLOCCO 3b — CRM: dashboard admin + pipeline lead + clienti attivi implementati
 - [ ] BLOCCO 4 — Core AI Engine (post-MVP)
 
-## Ultimo avanzamento (2026-03-13)
-- Fix critico: `ai/scoring.py` e `ai/engine.py` ora usano `AsyncAnthropic` (prima bloccavano l'event loop)
-- `supabase_schema.sql` creato e tabella `leads` creata su Supabase ✅
-- `backend/.env` configurato: ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY, RESEND_API_KEY ✅
-- `frontend/.env.local` configurato: SUPABASE_URL, SUPABASE_ANON_KEY, API_URL ✅
-- Python non trovato nel sistema — da installare o verificare
+## Ultimo avanzamento (2026-03-13) — Integrazione completata
+- Dipendenze aggiornate per Python 3.14: `pydantic>=2.12.0`, `supabase==2.9.1`, `fastapi>=0.115.0`, `anthropic>=0.40.0`
+- `weasyprint` reso opzionale (richiede GTK su Windows — skip per MVP)
+- Fix email `resend` v2: `to` ora lista, attachment base64 encoded
+- **Backend** gira su `http://localhost:8000` ✅
+- **Frontend** gira su `http://localhost:3000` ✅
+- **Supabase** salva lead correttamente ✅
+- **CRM** endpoint `/crm/stats` e `/crm/leads` funzionanti ✅
+- **Blocco attuale**: Anthropic API → crediti esauriti → scorecard non generata
 
 ## Punto di ripresa (prossima sessione)
-Gli env sono configurati e Supabase è pronto. Manca solo avviare i server.
+Un solo blocco rimasto prima del test end-to-end completo:
 
-Step da fare in ordine:
-1. **Verificare Python**: aprire terminale Cursor → `python --version`
-   - Se non trovato: installare da python.org (spuntare "Add Python to PATH")
-2. **Installare dipendenze backend**: `cd backend && pip install -r requirements.txt`
-3. **Avviare backend**: `uvicorn main:app --reload` (da `backend/`)
-4. **Avviare frontend**: `npm run dev` (da `frontend/`)
-5. **Test end-to-end**: completare una survey → verificare salvataggio in Supabase → verificare scorecard generata → verificare email ricevuta → verificare lead visibile in admin
+1. **Aggiungere crediti Anthropic**: console.anthropic.com → Plans & Billing
+2. **Avviare backend**: `cd backend && python -m uvicorn main:app --reload`
+3. **Avviare frontend**: `cd frontend && npm run dev`
+4. **Test end-to-end completo**: survey → Supabase ✅ → scorecard AI (richiede crediti) → email Resend → admin CRM ✅
+
+**Nota**: uvicorn va lanciato con `python -m uvicorn` (non `uvicorn` direttamente) perché il PATH non include Scripts di Python 3.14
 
 ## Decisioni architetturali
 - App Router Next.js 14 (non Pages Router)

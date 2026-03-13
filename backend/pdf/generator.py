@@ -1,7 +1,14 @@
-from weasyprint import HTML
 import datetime
 
+try:
+    from weasyprint import HTML
+    _WEASYPRINT_AVAILABLE = True
+except ImportError:
+    _WEASYPRINT_AVAILABLE = False
+
 def generate_pdf(scorecard: dict, survey_data: dict) -> bytes:
+    if not _WEASYPRINT_AVAILABLE:
+        return b""
     html_content = build_pdf_html(scorecard, survey_data)
     pdf = HTML(string=html_content).write_pdf()
     return pdf

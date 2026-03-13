@@ -68,13 +68,16 @@ async def generate_scorecard_async(lead_id: str, survey_data: dict):
 
         resend.api_key = os.getenv("RESEND_API_KEY")
         if resend.api_key:
-            resend.Emails.send({
-                "from": os.getenv("FROM_EMAIL", "noreply@aiconsultingpmi.it"),
-                "to": survey_data["contact_email"],
+            import base64
+            params = {
+                "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
+                "to": [survey_data["contact_email"]],
                 "subject": f"La tua AI Efficiency Scorecard — {survey_data['company_name']}",
                 "html": build_email_html(scorecard, survey_data),
-                "attachments": [{"filename": "scorecard.pdf", "content": list(pdf_bytes)}],
-            })
+            }
+            if pdf_bytes:
+                params["attachments"] = [{"filename": "scorecard.pdf", "content": base64.b64encode(pdf_bytes).decode()}]
+            resend.Emails.send(params)
     except Exception as e:
         print(f"Error generating scorecard: {e}")
 
