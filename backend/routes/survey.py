@@ -77,9 +77,80 @@ async def generate_scorecard_async(lead_id: str, survey_data: dict):
             }
             if pdf_bytes:
                 params["attachments"] = [{"filename": "scorecard.pdf", "content": base64.b64encode(pdf_bytes).decode()}]
-            resend.Emails.send(params)
+            try:
+                result = resend.Emails.send(params)
+                print(f"Email inviata: {result}")
+            except Exception as email_error:
+                print(f"Errore invio email: {email_error}")
+        else:
+            print("RESEND_API_KEY non configurata")
     except Exception as e:
         print(f"Error generating scorecard: {e}")
+
+@router.post("/survey/resend-email/{lead_id}")
+async def resend_email(lead_id: str):
+    try:
+        import resend, base64
+        supabase = get_supabase()
+        result = supabase.table("leads").select("*").eq("id", lead_id).execute()
+        if not result.data:
+            raise HTTPException(404, "Lead non trovato")
+        lead = result.data[0]
+        scorecard = lead.get("scorecard_data")
+        survey_data = lead.get("survey_data")
+        if not scorecard or not survey_data:
+            raise HTTPException(400, "Scorecard non ancora generata per questo lead")
+        resend.api_key = os.getenv("RESEND_API_KEY")
+        params = {
+            "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
+            "to": [lead["contact_email"]],
+            "subject": f"La tua AI Efficiency Scorecard — {lead['company_name']}",
+            "html": build_email_html(scorecard, survey_data),
+        }
+        result_email = resend.Emails.send(params)
+        print(f"Email inviata: {result_email}")
+        return {"success": True, "message": f"Email inviata a {lead['contact_email']}"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Errore resend-email: {e}")
+        raise HTTPException(500, str(e))
+
+@router.post("/survey/retry/{lead_id}")
+async def retry_scorecard(lead_id: str, background_tasks: BackgroundTasks):
+    try:
+        supabase = get_supabase()
+        result = supabase.table("leads").select("*").eq("id", lead_id).execute()
+        if not result.data:
+            raise HTTPException(404, "Lead non trovato")
+        lead = result.data[0]
+        if lead.get("status") == "survey_done":
+            return {"success": False, "message": "Scorecard già inviata per questo lead"}
+        survey_data = lead.get("survey_data", {})
+        if not survey_data:
+            raise HTTPException(400, "survey_data mancante per questo lead")
+        background_tasks.add_task(generate_scorecard_async, lead_id, survey_data)
+        return {"success": True, "message": f"Scorecard in generazione per lead {lead_id}"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@router.post("/survey/retry-pending")
+async def retry_pending_scorecards(background_tasks: BackgroundTasks):
+    try:
+        supabase = get_supabase()
+        result = supabase.table("leads").select("*").eq("status", "new").execute()
+        leads = result.data or []
+        queued = []
+        for lead in leads:
+            survey_data = lead.get("survey_data", {})
+            if survey_data:
+                background_tasks.add_task(generate_scorecard_async, lead["id"], survey_data)
+                queued.append(lead["id"])
+        return {"success": True, "queued": len(queued), "lead_ids": queued}
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 def build_email_html(scorecard: dict, survey_data: dict) -> str:
     return f"""
