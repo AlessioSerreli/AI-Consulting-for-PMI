@@ -48,6 +48,42 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 - Workflow: `luigi/feature` o `alessio/feature` → PR → `develop` → `main`
 - Luigi: backend (FastAPI) | Alessio: frontend (Next.js)
 
+## Workflow di collaborazione (Alessio + Luigi)
+
+### Ruoli
+- **Alessio** → Frontend (Next.js, pagine, componenti, UI)
+- **Luigi** → Backend (FastAPI, endpoint, logica AI, database)
+
+### Struttura branch
+```
+main       ← produzione, protetto (solo merge via PR approvata)
+develop    ← branch di integrazione, da cui si parte sempre
+alessio/   ← branch di Alessio (es. alessio/landing-fix)
+luigi/     ← branch di Luigi (es. luigi/crm-endpoint)
+```
+
+### Regole di lavoro
+1. **Mai lavorare direttamente su `main`** — è protetto e richiede PR
+2. **Ogni sessione inizia così**:
+   ```
+   git checkout develop
+   git pull origin develop
+   git checkout -b alessio/nome-feature   (o luigi/nome-feature)
+   ```
+3. **Finita la feature**, si apre una PR verso `develop`:
+   ```
+   git push origin alessio/nome-feature
+   ```
+   Poi su GitHub: "Compare & pull request" → assegnare l'altro come reviewer
+4. **L'altro approva** la PR → merge su `develop`
+5. **Quando il codice è stabile** e testato su `develop` → PR verso `main`
+
+### Regole pratiche
+- Commit frequenti con messaggi chiari (imperativo: "add", "fix", "update")
+- Fare `git pull origin develop` prima di iniziare ogni sessione
+- Non modificare mai file dell'area dell'altro senza avvisare
+- Se c'è un conflitto, risolverlo insieme — non fare mai force push
+
 ## Punto di ripresa (prossima sessione)
 Il flusso end-to-end funziona completamente. Prossimi step:
 
