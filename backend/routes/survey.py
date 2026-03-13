@@ -14,21 +14,41 @@ def get_supabase():
     return create_client(url, key)
 
 class SurveyPayload(BaseModel):
+    # Campi obbligatori
     company_name: str
-    sector: str
-    employees: str
-    founded_year: str
-    main_processes: List[str]
-    manual_processes: int
-    time_waste: str
-    current_tools: List[str]
-    digital_satisfaction: int
-    main_pain: str
-    ai_knowledge: str
-    main_goal: str
-    budget_range: str
     contact_name: str
     contact_email: str
+    sector: str
+    employees: str
+    # Campi vecchia survey (opzionali per retrocompatibilità)
+    founded_year: Optional[str] = None
+    main_processes: Optional[List[str]] = None
+    manual_processes: Optional[int] = None
+    time_waste: Optional[str] = None
+    current_tools: Optional[List[str]] = None
+    digital_satisfaction: Optional[int] = None
+    main_pain: Optional[str] = None
+    ai_knowledge: Optional[str] = None
+    main_goal: Optional[str] = None
+    budget_range: Optional[str] = None
+    # Campi nuova survey
+    phone: Optional[str] = None
+    tools: Optional[List[str]] = None
+    critical_process: Optional[str] = None
+    time_on_email: Optional[str] = None
+    processes_documented: Optional[str] = None
+    pain_email: Optional[int] = None
+    pain_delegare: Optional[int] = None
+    pain_dati: Optional[int] = None
+    pain_errori: Optional[int] = None
+    pain_tempo: Optional[int] = None
+    pain_monitor: Optional[int] = None
+    ai_usage: Optional[str] = None
+    ai_concerns: Optional[List[str]] = None
+    objective: Optional[str] = None
+    timeline: Optional[str] = None
+    budget: Optional[str] = None
+    free_notes: Optional[str] = None
 
 @router.post("/survey")
 async def submit_survey(payload: SurveyPayload, background_tasks: BackgroundTasks):
