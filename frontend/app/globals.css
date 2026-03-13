@@ -1,13 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --navy-950: #060D1A;
-  --navy-900: #0A1628;
-  --navy-800: #0F1E35;
-  --electric-500: #2563EB;
+  --navy-950: '#060A12';
+  --navy-900: #0A0F1E;
+  --navy-800: #111827;
+  --accent: #F59E0B;
 }
 
 * {
@@ -22,12 +22,12 @@ body {
   overflow-x: hidden;
   background-color: var(--navy-900);
   color: #F8FAFC;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: "'DM Sans'", system-ui, sans-serif;
 }
 
 ::selection {
-  background: #2563EB;
-  color: white;
+  background: #F59E0B;
+  color: #0A0F1E;
 }
 
 ::-webkit-scrollbar {
@@ -37,7 +37,7 @@ body {
   background: var(--navy-900);
 }
 ::-webkit-scrollbar-thumb {
-  background: #2563EB;
+  background: #F59E0B;
   border-radius: 3px;
 }
 
