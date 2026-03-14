@@ -84,7 +84,9 @@ Genera la scorecard in questo formato JSON:
         "<Step 3: regime e misurazione, mese 1>"
       ],
       "difficulty": "<Facile | Medio>",
-      "timeline": "<30 giorni | 60 giorni | 90 giorni>"
+      "timeline": "<30 giorni | 60 giorni | 90 giorni>",
+      "tool_cost": "<es: Gratuito | ~€9/mese Make.com + €0 ChatGPT free tier | ~€50/mese>",
+      "who": "<Tu in autonomia | Con supporto tecnico (1-2h) | Consulente AI>"
     }},
     {{
       "title": "<titolo>",
@@ -93,7 +95,9 @@ Genera la scorecard in questo formato JSON:
       "impact": "<impatto quantificato>",
       "steps": ["<step 1>", "<step 2>", "<step 3>"],
       "difficulty": "<Facile | Medio>",
-      "timeline": "<30 | 60 | 90 giorni>"
+      "timeline": "<30 | 60 | 90 giorni>",
+      "tool_cost": "<costo strumenti>",
+      "who": "<chi implementa>"
     }},
     {{
       "title": "<titolo>",
@@ -102,7 +106,9 @@ Genera la scorecard in questo formato JSON:
       "impact": "<impatto quantificato>",
       "steps": ["<step 1>", "<step 2>", "<step 3>"],
       "difficulty": "<Facile | Medio>",
-      "timeline": "<30 | 60 | 90 giorni>"
+      "timeline": "<30 | 60 | 90 giorni>",
+      "tool_cost": "<costo strumenti>",
+      "who": "<chi implementa>"
     }}
   ],
   "executive_summary": "<analisi executive 3-4 frasi: posizionamento vs settore, punti di forza, criticità principali, potenziale di miglioramento. Deve essere specifica per questa azienda, non generica.>"
