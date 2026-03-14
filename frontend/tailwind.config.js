@@ -9,21 +9,23 @@ module.exports = {
     extend: {
       colors: {
         navy: {
-          950: '#060D1A',
-          900: '#0A1628',
-          800: '#0F1E35',
-          700: '#162440',
-          600: '#1E2F52',
+          950: '#060A12',
+          900: '#0A0F1E',
+          800: '#111827',
+          700: '#1A2336',
+          600: '#243048',
         },
         electric: {
-          600: '#1D4ED8',
-          500: '#2563EB',
-          400: '#3B82F6',
-          300: '#60A5FA',
+          600: '#D97706',
+          500: '#F59E0B',
+          400: '#FBBF24',
+          300: '#FCD34D',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ["'DM Sans'", 'system-ui', 'sans-serif'],
+        mono: ["'DM Mono'", 'monospace'],
+        display: ["'Bebas Neue'", 'sans-serif'],
       },
     },
   },
