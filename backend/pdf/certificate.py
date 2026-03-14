@@ -1,6 +1,6 @@
 """
-Generatore del Certificato di Efficienza Operativa — AI.PMI Italia
-Design premium 3 pagine A4 con benchmark settoriali.
+Certificato di Efficienza Operativa — AI.PMI Italia
+4 pagine A4: Cover · Executive Dashboard · Analisi Dimensionale · Quick Win AI
 """
 from datetime import datetime
 import hashlib
@@ -55,44 +55,122 @@ def _dim_block(dim_key: str, dim_data: dict, benchmark: dict) -> str:
     diff_str = f"+{diff}" if diff > 0 else str(diff)
     diff_color = "#10B981" if diff > 0 else "#EF4444"
     diff_bg = "#F0FDF4" if diff > 0 else "#FEF2F2"
-    analysis = dim_data.get("analysis", "")
-    improvement = dim_data.get("improvement", "")
 
     return f"""
-    <div style="margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid #E2E8F0;">
-      <div style="overflow:hidden;margin-bottom:12px;">
-        <span style="font-size:12px;font-weight:700;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.06em;">{label}</span>
-        <span style="float:right;font-size:10px;color:{diff_color};font-weight:700;
-               background:{diff_bg};padding:2px 8px;border-radius:12px;">{diff_str} vs media settore</span>
+    <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #E2E8F0;">
+      <div style="overflow:hidden;margin-bottom:10px;">
+        <span style="font-size:11px;font-weight:700;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.06em;">{label}</span>
+        <span style="float:right;font-size:9px;color:{diff_color};font-weight:700;
+               background:{diff_bg};padding:2px 7px;border-radius:12px;">{diff_str} vs media settore</span>
       </div>
       {_bar("La tua azienda", score, color, True)}
       {_bar(f"Media settore ({benchmark.get('sample_label', 'PMI italiane')})", bench, "#94A3B8", False)}
-      <p style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:6px;">{analysis}</p>
-      <p style="font-size:11px;color:#F59E0B;font-weight:600;">▸ {improvement}</p>
+      <p style="font-size:11px;color:#374151;line-height:1.7;margin-bottom:5px;">{dim_data.get('analysis', '')}</p>
+      <p style="font-size:10px;color:#F59E0B;font-weight:600;">▸ {dim_data.get('improvement', '')}</p>
+    </div>"""
+
+
+def _metric_tile(label: str, score: int, bench: int) -> str:
+    color = _score_color(score)
+    diff = score - bench
+    diff_str = f"+{diff}" if diff > 0 else str(diff)
+    diff_color = "#10B981" if diff > 0 else "#EF4444"
+    short = label.replace("Efficienza Operativa", "Efficienza Op.").replace("Comunicazione Interna", "Comunicazione").replace("Velocità Decisionale", "Velocità Decis.")
+    return f"""
+    <div style="flex:1;background:#F8FAFC;border-radius:8px;padding:14px 10px;
+                text-align:center;border-top:3px solid {color};min-width:0;">
+      <div style="font-size:8px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.1em;
+                  margin-bottom:6px;line-height:1.3;">{short}</div>
+      <div style="font-size:22px;font-weight:900;color:{color};line-height:1;">{score}</div>
+      <div style="font-size:8px;color:#94A3B8;margin-bottom:4px;">/100</div>
+      <div style="font-size:9px;color:{diff_color};font-weight:700;">{diff_str} peer</div>
+    </div>"""
+
+
+def _qw_card(qw: dict, index: int) -> str:
+    if isinstance(qw, str):
+        return f"""
+        <div style="display:flex;gap:16px;margin-bottom:16px;padding:16px 18px;
+                    background:#F8FAFC;border-left:4px solid #F59E0B;border-radius:0 8px 8px 0;">
+          <div style="font-size:26px;font-weight:900;color:#F59E0B;min-width:30px;line-height:1;">0{index}</div>
+          <div style="font-size:12px;color:#1E293B;line-height:1.7;">{qw}</div>
+        </div>"""
+
+    title      = qw.get("title", "")
+    tool       = qw.get("tool", "")
+    process    = qw.get("process", "")
+    impact     = qw.get("impact", "")
+    steps      = qw.get("steps", [])
+    difficulty = qw.get("difficulty", "")
+    timeline   = qw.get("timeline", "")
+
+    steps_html = "".join(
+        f'<div style="display:flex;gap:8px;margin-bottom:5px;">'
+        f'<span style="color:#F59E0B;font-weight:700;font-size:10px;min-width:14px;">{i+1}.</span>'
+        f'<span style="font-size:11px;color:#374151;line-height:1.6;">{s}</span>'
+        f'</div>'
+        for i, s in enumerate(steps[:3])
+    )
+
+    diff_color = "#10B981" if difficulty == "Facile" else "#F59E0B"
+
+    return f"""
+    <div style="margin-bottom:18px;padding:18px 20px;background:#F8FAFC;
+                border-left:4px solid #F59E0B;border-radius:0 8px 8px 0;">
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:12px;">
+        <div style="font-size:28px;font-weight:900;color:#F59E0B;min-width:30px;line-height:1;flex-shrink:0;">0{index}</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;color:#0A0F1E;margin-bottom:4px;">{title}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <span style="background:#0A0F1E;color:#F59E0B;border-radius:4px;
+                         padding:2px 8px;font-size:9px;font-weight:700;">⚡ {tool}</span>
+            <span style="background:#E2E8F0;color:#475569;border-radius:4px;
+                         padding:2px 8px;font-size:9px;">🎯 {process}</span>
+            <span style="background:{diff_color}20;color:{diff_color};border-radius:4px;
+                         padding:2px 8px;font-size:9px;font-weight:600;">{difficulty} · {timeline}</span>
+          </div>
+        </div>
+      </div>
+      <!-- Impact -->
+      <div style="background:#FFFBEB;border:1px solid rgba(245,158,11,0.3);border-radius:6px;
+                  padding:8px 12px;margin-bottom:10px;">
+        <span style="font-size:10px;font-weight:700;color:#F59E0B;">📈 Impatto stimato: </span>
+        <span style="font-size:10px;color:#1E293B;">{impact}</span>
+      </div>
+      <!-- Steps -->
+      <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;
+                  letter-spacing:0.1em;margin-bottom:6px;">Piano di implementazione</div>
+      {steps_html}
     </div>"""
 
 
 def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
-    now = datetime.now()
-    company     = survey_data.get("company_name", "Azienda")
-    sector      = survey_data.get("sector", "Altro")
-    employees   = survey_data.get("employees", "N/A")
-    contact     = survey_data.get("contact_name", "")
-    date_str    = now.strftime("%d/%m/%Y")
+    now        = datetime.now()
+    company    = survey_data.get("company_name", "Azienda")
+    sector     = survey_data.get("sector", "Altro")
+    employees  = survey_data.get("employees", "N/A")
+    contact    = survey_data.get("contact_name", "")
+    date_str   = now.strftime("%d/%m/%Y")
     cert_number = _cert_number(company)
 
-    benchmark   = get_benchmark(sector)
-    overall     = scorecard.get("overall_score", 0)
+    benchmark  = get_benchmark(sector)
+    overall    = scorecard.get("overall_score", 0)
     cert_level, level_color = get_certification_level(overall)
-    percentile  = score_to_percentile(overall, benchmark["overall"], benchmark["std"])
-    top_label   = get_top_label(percentile)
-    executive   = scorecard.get("executive_summary", "")
-    dimensions  = scorecard.get("dimensions", {})
-    quick_wins  = scorecard.get("quick_wins", [])
+    percentile = score_to_percentile(overall, benchmark["overall"], benchmark["std"])
+    top_label  = get_top_label(percentile)
+    executive  = scorecard.get("executive_summary", "")
+    dimensions = scorecard.get("dimensions", {})
+    quick_wins = scorecard.get("quick_wins", [])
 
-    # --- Personalization data ---
+    # Personalization
     critical_processes = survey_data.get("critical_processes") or []
     objectives         = survey_data.get("objectives") or []
+    tools_used         = survey_data.get("tools") or []
+    time_on_email      = survey_data.get("time_on_email", "N/A")
+    proc_doc           = survey_data.get("processes_documented", "N/A")
+    ai_usage           = survey_data.get("ai_usage", "N/A")
+
     pain_map = {
         "Email e riunioni":      survey_data.get("pain_email", 0),
         "Difficoltà a delegare": survey_data.get("pain_delegare", 0),
@@ -101,44 +179,47 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
         "Attività manuali":      survey_data.get("pain_tempo", 0),
         "Monitorare performance":survey_data.get("pain_monitor", 0),
     }
-    top_pains = sorted([(k, v) for k, v in pain_map.items() if v], key=lambda x: -x[1])[:3]
+    sorted_pains = sorted([(k, v) for k, v in pain_map.items() if v], key=lambda x: -x[1])
 
-    # --- Build sections ---
-    dim_rows = ""
-    for dk in DIMENSION_LABELS:
-        if dk in dimensions:
-            dim_rows += _dim_block(dk, dimensions[dk], benchmark)
+    # Build sections
+    metric_tiles = "".join(
+        _metric_tile(lbl, dimensions.get(dk, {}).get("score", 0), benchmark.get(dk, 50))
+        for dk, lbl in DIMENSION_LABELS.items()
+    )
 
-    qw_cards = ""
-    for i, win in enumerate(quick_wins[:3], 1):
-        qw_cards += f"""
-        <div style="display:flex;gap:20px;margin-bottom:20px;padding:20px 22px;
-                    background:#F8FAFC;border-left:4px solid #F59E0B;border-radius:0 10px 10px 0;">
-          <div style="font-size:30px;font-weight:900;color:#F59E0B;min-width:36px;
-                      line-height:1;font-family:Arial Black,Arial,sans-serif;">0{i}</div>
-          <div style="font-size:13px;color:#1E293B;line-height:1.7;">{win}</div>
-        </div>"""
+    dim_rows = "".join(
+        _dim_block(dk, dimensions[dk], benchmark)
+        for dk in DIMENSION_LABELS if dk in dimensions
+    )
 
-    # Personalization badges
-    procs_html = "".join(
-        f'<span style="display:inline-block;background:#F59E0B;color:#0A0F1E;border-radius:4px;'
-        f'padding:3px 10px;font-size:10px;font-weight:700;margin:3px 4px 3px 0;">{i}° {p}</span>'
-        for i, p in enumerate(critical_processes[:3], 1)
-    ) or '<span style="font-size:12px;color:#64748B;">N/A</span>'
+    qw_cards = "".join(
+        _qw_card(qw, i + 1) for i, qw in enumerate(quick_wins[:3])
+    )
 
-    obj_html = " · ".join(f'<strong style="color:#CBD5E1;">{o}</strong>' for o in objectives) \
-               if objectives else '<span style="color:#64748B;">N/A</span>'
-
+    # Pain points rows
     pain_rows = "".join(
         f'<div style="display:flex;justify-content:space-between;align-items:center;'
-        f'padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
+        f'padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
         f'<span style="font-size:11px;color:#94A3B8;">{lbl}</span>'
         f'<span style="color:#F59E0B;letter-spacing:3px;font-size:10px;">{"●" * v + "○" * (5 - v)}</span>'
         f'</div>'
-        for lbl, v in top_pains
+        for lbl, v in sorted_pains
     )
 
-    # Positioning bar
+    # Processes badges
+    procs_html = "".join(
+        f'<span style="display:inline-block;background:#F59E0B;color:#0A0F1E;border-radius:4px;'
+        f'padding:3px 9px;font-size:9px;font-weight:700;margin:2px 3px 2px 0;">{i}° {p}</span>'
+        for i, p in enumerate(critical_processes[:3], 1)
+    ) or '<span style="font-size:11px;color:#64748B;">N/A</span>'
+
+    obj_tags = "".join(
+        f'<span style="display:inline-block;background:rgba(245,158,11,0.12);color:#F59E0B;'
+        f'border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:3px 9px;'
+        f'font-size:9px;font-weight:600;margin:2px 3px 2px 0;">{o}</span>'
+        for o in objectives
+    ) or '<span style="font-size:11px;color:#64748B;">N/A</span>'
+
     bench_left = benchmark["overall"]
 
     return f"""<!DOCTYPE html>
@@ -162,231 +243,245 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
     position: relative;
   }}
   .page:last-child {{ page-break-after: auto; }}
+  .ph {{
+    background: #0A0F1E;
+    padding: 15px 52px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }}
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════════════════ -->
-<!-- PAGINA 1 — COPERTINA                                          -->
-<!-- ══════════════════════════════════════════════════════════════ -->
-<div class="page" style="background:#0A0F1E;color:#F8FAFC;padding:52px 56px;
+
+<!-- ══════════════════════════════════════════════ PAGE 1: COVER ══ -->
+<div class="page" style="background:#0A0F1E;color:#F8FAFC;padding:48px 52px;
      display:flex;flex-direction:column;min-height:297mm;">
 
-  <!-- TOP BAR -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:44px;">
-    <span style="font-size:13px;letter-spacing:0.28em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;">
+    <span style="font-size:12px;letter-spacing:0.28em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
     <div style="text-align:right;">
-      <div style="font-size:9px;color:#475569;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:3px;">N° Certificato</div>
-      <div style="font-size:10px;color:#94A3B8;font-family:Courier New,monospace;font-weight:600;">{cert_number}</div>
+      <div style="font-size:8px;color:#475569;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:2px;">N° Certificato</div>
+      <div style="font-size:10px;color:#64748B;font-family:Courier New,monospace;">{cert_number}</div>
     </div>
   </div>
 
-  <!-- TITLE -->
-  <div style="border-top:1px solid rgba(245,158,11,0.3);padding-top:32px;margin-bottom:32px;">
-    <div style="font-size:9px;letter-spacing:0.22em;color:#475569;text-transform:uppercase;margin-bottom:14px;">
+  <div style="border-top:1px solid rgba(245,158,11,0.3);padding-top:28px;margin-bottom:28px;">
+    <div style="font-size:8px;letter-spacing:0.22em;color:#475569;text-transform:uppercase;margin-bottom:12px;">
       Documento di analisi riservato
     </div>
-    <div style="font-size:40px;font-weight:900;color:#FFFFFF;line-height:1.05;
+    <div style="font-size:38px;font-weight:900;color:#FFFFFF;line-height:1.05;
                 text-transform:uppercase;letter-spacing:-0.01em;">
       CERTIFICATO DI<br>EFFICIENZA<br><span style="color:#F59E0B;">OPERATIVA</span>
     </div>
   </div>
 
-  <!-- COMPANY BOX -->
-  <div style="border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:22px 26px;
-              margin-bottom:32px;background:rgba(255,255,255,0.03);">
-    <div style="font-size:9px;letter-spacing:0.22em;color:#475569;text-transform:uppercase;margin-bottom:10px;">
-      Rilasciato a
-    </div>
-    <div style="font-size:26px;font-weight:900;color:#FFFFFF;text-transform:uppercase;
-                letter-spacing:-0.01em;margin-bottom:7px;">{company}</div>
-    <div style="font-size:12px;color:#64748B;">
-      {sector}&nbsp;&nbsp;·&nbsp;&nbsp;{employees} dipendenti&nbsp;&nbsp;·&nbsp;&nbsp;Italia
-    </div>
+  <div style="border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:20px 24px;
+              margin-bottom:28px;background:rgba(255,255,255,0.03);">
+    <div style="font-size:8px;letter-spacing:0.22em;color:#475569;text-transform:uppercase;margin-bottom:8px;">Rilasciato a</div>
+    <div style="font-size:24px;font-weight:900;color:#FFFFFF;text-transform:uppercase;margin-bottom:6px;">{company}</div>
+    <div style="font-size:11px;color:#64748B;">{sector} &nbsp;·&nbsp; {employees} dipendenti &nbsp;·&nbsp; Italia</div>
   </div>
 
-  <!-- SCORE + LEVEL -->
-  <div style="display:flex;gap:22px;align-items:flex-start;margin-bottom:32px;">
-    <div style="background:{level_color};border-radius:10px;padding:18px 24px;
-                min-width:130px;text-align:center;flex-shrink:0;">
-      <div style="font-size:54px;font-weight:900;color:#0A0F1E;line-height:1;">{overall}</div>
-      <div style="font-size:13px;color:rgba(10,15,30,0.65);font-weight:600;">/100</div>
+  <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:28px;">
+    <div style="background:{level_color};border-radius:10px;padding:16px 22px;min-width:120px;text-align:center;flex-shrink:0;">
+      <div style="font-size:48px;font-weight:900;color:#0A0F1E;line-height:1;">{overall}</div>
+      <div style="font-size:12px;color:rgba(10,15,30,0.65);font-weight:600;">/100</div>
     </div>
-    <div style="padding-top:6px;">
-      <div style="font-size:16px;font-weight:800;color:#FFFFFF;text-transform:uppercase;
-                  letter-spacing:0.04em;margin-bottom:10px;">{cert_level}</div>
-      <div style="display:inline-block;background:rgba(245,158,11,0.12);
-                  border:1px solid rgba(245,158,11,0.35);border-radius:20px;
-                  padding:4px 14px;font-size:11px;color:#F59E0B;font-weight:700;
-                  margin-bottom:12px;">{top_label}</div>
-      <div style="font-size:10px;color:#475569;line-height:1.6;">
-        Confronto con {benchmark['sample_label']}<br>
-        Fonte: {benchmark['source']}
+    <div style="padding-top:4px;">
+      <div style="font-size:15px;font-weight:800;color:#FFFFFF;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">{cert_level}</div>
+      <div style="display:inline-block;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);
+                  border-radius:20px;padding:4px 14px;font-size:11px;color:#F59E0B;font-weight:700;margin-bottom:10px;">{top_label}</div>
+      <div style="font-size:9px;color:#475569;line-height:1.6;">
+        Confronto con {benchmark['sample_label']}<br>Fonte: {benchmark['source']}
       </div>
     </div>
   </div>
 
-  <!-- EXECUTIVE SUMMARY QUOTE -->
-  <div style="border-left:3px solid #F59E0B;padding-left:18px;margin-bottom:auto;">
-    <div style="font-size:13px;color:#CBD5E1;line-height:1.8;font-style:italic;">
-      &ldquo;{executive}&rdquo;
-    </div>
+  <div style="border-left:3px solid #F59E0B;padding-left:16px;margin-bottom:auto;">
+    <div style="font-size:12px;color:#CBD5E1;line-height:1.8;font-style:italic;">&ldquo;{executive}&rdquo;</div>
   </div>
 
-  <!-- SIGNATURE -->
-  <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:22px;margin-top:32px;
+  <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:20px;margin-top:28px;
               display:flex;justify-content:space-between;align-items:flex-end;">
     <div>
       <div style="font-size:13px;font-weight:700;color:#FFFFFF;margin-bottom:2px;">Luigi Negro</div>
-      <div style="font-size:10px;color:#475569;margin-bottom:2px;">AI Expert &amp; Partner · AI.PMI Italia</div>
-      <div style="font-size:10px;color:#475569;">{date_str}</div>
+      <div style="font-size:9px;color:#475569;margin-bottom:2px;">AI Expert &amp; Partner · AI.PMI Italia</div>
+      <div style="font-size:9px;color:#475569;">{date_str}</div>
     </div>
-    <div style="width:58px;height:58px;border:2px solid rgba(245,158,11,0.4);border-radius:50%;
+    <div style="width:52px;height:52px;border:2px solid rgba(245,158,11,0.4);border-radius:50%;
                 display:flex;align-items:center;justify-content:center;">
       <div style="text-align:center;">
-        <div style="font-size:9px;font-weight:900;color:#F59E0B;letter-spacing:0.12em;">AI·PMI</div>
-        <div style="font-size:6px;color:#475569;letter-spacing:0.12em;">CERT.</div>
+        <div style="font-size:8px;font-weight:900;color:#F59E0B;letter-spacing:0.12em;">AI·PMI</div>
+        <div style="font-size:5px;color:#475569;letter-spacing:0.12em;">CERT.</div>
       </div>
     </div>
   </div>
 </div>
 
 
-<!-- ══════════════════════════════════════════════════════════════ -->
-<!-- PAGINA 2 — ANALISI DIMENSIONALE                               -->
-<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════ PAGE 2: EXECUTIVE DASHBOARD ══ -->
 <div class="page" style="background:#FFFFFF;min-height:297mm;">
 
-  <!-- PAGE HEADER -->
-  <div style="background:#0A0F1E;padding:16px 56px;display:flex;
-              justify-content:space-between;align-items:center;">
+  <div class="ph">
     <span style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
-    <span style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Analisi Dimensionale &nbsp;·&nbsp; {date_str}</span>
-    <span style="font-size:9px;color:#475569;">2 / 3</span>
+    <span style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Executive Dashboard &nbsp;·&nbsp; {date_str}</span>
+    <span style="font-size:9px;color:#475569;">2 / 4</span>
   </div>
 
-  <div style="padding:30px 56px;">
+  <div style="padding:26px 52px;">
 
     <!-- Section title -->
-    <div style="margin-bottom:26px;">
-      <div style="font-size:8px;letter-spacing:0.22em;color:#94A3B8;text-transform:uppercase;margin-bottom:6px;">
-        Analisi dettagliata per dimensione
+    <div style="margin-bottom:20px;">
+      <div style="font-size:8px;letter-spacing:0.22em;color:#94A3B8;text-transform:uppercase;margin-bottom:5px;">Sintesi completa dell'analisi</div>
+      <div style="font-size:19px;font-weight:900;color:#0A0F1E;text-transform:uppercase;letter-spacing:-0.01em;">
+        EXECUTIVE <span style="color:#F59E0B;">DASHBOARD</span>
       </div>
-      <div style="font-size:20px;font-weight:900;color:#0A0F1E;text-transform:uppercase;letter-spacing:-0.01em;">
+    </div>
+
+    <!-- 5 METRIC TILES -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;">
+      {metric_tiles}
+    </div>
+
+    <!-- OVERALL POSITIONING BAR -->
+    <div style="background:#F8FAFC;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+      <div style="overflow:hidden;margin-bottom:10px;">
+        <span style="font-size:9px;font-weight:700;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.1em;">
+          Posizionamento Competitivo Complessivo
+        </span>
+        <span style="float:right;font-size:10px;color:#0A0F1E;font-weight:700;">{overall}/100</span>
+      </div>
+      <div style="position:relative;height:14px;background:#E2E8F0;border-radius:7px;margin-bottom:6px;">
+        <div style="position:absolute;left:0;top:0;height:100%;width:{overall}%;background:{level_color};border-radius:7px;"></div>
+        <div style="position:absolute;left:{bench_left}%;top:-3px;height:20px;width:2px;background:#0A0F1E;border-radius:1px;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:8px;color:#94A3B8;margin-bottom:8px;">
+        <span>0 — Iniziale</span><span>25</span><span>50 — Intermedio</span><span>75</span><span>100 — Eccellente</span>
+      </div>
+      <div style="font-size:11px;color:#374151;">
+        Punteggio: <strong style="color:{level_color};">{overall}/100</strong> &nbsp;·&nbsp;
+        Media settore: <strong style="color:#0A0F1E;">{benchmark['overall']}/100</strong> &nbsp;·&nbsp;
+        <strong style="color:{level_color};">{top_label}</strong>
+      </div>
+    </div>
+
+    <!-- TWO COLUMNS: Context + Pain Points -->
+    <div style="display:flex;gap:16px;margin-bottom:20px;">
+
+      <!-- Contesto aziendale -->
+      <div style="flex:1;background:#0A0F1E;border-radius:8px;padding:18px 20px;">
+        <div style="font-size:8px;color:#F59E0B;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;margin-bottom:12px;">
+          Contesto aziendale
+        </div>
+        <div style="font-size:10px;color:#94A3B8;margin-bottom:6px;">
+          <span style="color:#CBD5E1;font-weight:600;">Settore:</span> {sector}
+        </div>
+        <div style="font-size:10px;color:#94A3B8;margin-bottom:6px;">
+          <span style="color:#CBD5E1;font-weight:600;">Dipendenti:</span> {employees}
+        </div>
+        <div style="font-size:10px;color:#94A3B8;margin-bottom:6px;">
+          <span style="color:#CBD5E1;font-weight:600;">Email/riunioni/giorno:</span> {time_on_email}
+        </div>
+        <div style="font-size:10px;color:#94A3B8;margin-bottom:6px;">
+          <span style="color:#CBD5E1;font-weight:600;">Processi documentati:</span> {proc_doc}
+        </div>
+        <div style="font-size:10px;color:#94A3B8;">
+          <span style="color:#CBD5E1;font-weight:600;">Uso AI attuale:</span> {ai_usage}
+        </div>
+      </div>
+
+      <!-- Pain points -->
+      <div style="flex:1;background:#0A0F1E;border-radius:8px;padding:18px 20px;">
+        <div style="font-size:8px;color:#F59E0B;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;margin-bottom:12px;">
+          Criticità dichiarate (scala 1–5)
+        </div>
+        {pain_rows}
+      </div>
+
+    </div>
+
+    <!-- Processi critici + Obiettivi -->
+    <div style="display:flex;gap:16px;">
+      <div style="flex:1;padding:16px 18px;background:#F8FAFC;border-radius:8px;">
+        <div style="font-size:8px;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-bottom:10px;">
+          Processi analizzati (in ordine di criticità)
+        </div>
+        {procs_html}
+      </div>
+      <div style="flex:1;padding:16px 18px;background:#F8FAFC;border-radius:8px;">
+        <div style="font-size:8px;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-bottom:10px;">
+          Obiettivi prioritari dichiarati
+        </div>
+        {obj_tags}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════ PAGE 3: ANALISI DIMENSIONALE ══ -->
+<div class="page" style="background:#FFFFFF;min-height:297mm;">
+
+  <div class="ph">
+    <span style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
+    <span style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Analisi Dimensionale &nbsp;·&nbsp; {date_str}</span>
+    <span style="font-size:9px;color:#475569;">3 / 4</span>
+  </div>
+
+  <div style="padding:26px 52px;">
+    <div style="margin-bottom:20px;">
+      <div style="font-size:8px;letter-spacing:0.22em;color:#94A3B8;text-transform:uppercase;margin-bottom:5px;">
+        Analisi dettagliata per dimensione con confronto peers
+      </div>
+      <div style="font-size:19px;font-weight:900;color:#0A0F1E;text-transform:uppercase;letter-spacing:-0.01em;">
         ANALISI <span style="color:#F59E0B;">DIMENSIONALE</span>
       </div>
     </div>
-
     {dim_rows}
-
-    <!-- POSITIONING BAR -->
-    <div style="background:#F8FAFC;border-radius:10px;padding:20px 22px;margin-top:8px;">
-      <div style="font-size:9px;font-weight:700;color:#0A0F1E;text-transform:uppercase;
-                  letter-spacing:0.12em;margin-bottom:14px;">
-        Posizionamento Competitivo Complessivo
-      </div>
-      <!-- Track -->
-      <div style="position:relative;height:16px;background:#E2E8F0;border-radius:8px;margin-bottom:8px;">
-        <!-- Your bar -->
-        <div style="position:absolute;left:0;top:0;height:100%;width:{overall}%;
-                    background:#F59E0B;border-radius:8px;"></div>
-        <!-- Sector avg marker -->
-        <div style="position:absolute;left:{bench_left}%;top:-4px;height:24px;
-                    width:2px;background:#0A0F1E;border-radius:1px;"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:8px;
-                  color:#94A3B8;margin-bottom:12px;">
-        <span>0</span><span>25</span><span>50</span><span>75</span><span>100</span>
-      </div>
-      <div style="font-size:12px;color:#374151;">
-        Punteggio: <strong style="color:#F59E0B;">{overall}/100</strong>
-        &nbsp;·&nbsp;
-        Media settore: <strong style="color:#0A0F1E;">{benchmark['overall']}/100</strong>
-        &nbsp;·&nbsp;
-        Posizionamento: <strong style="color:{level_color};">{top_label}</strong>
-      </div>
-    </div>
-
   </div>
 </div>
 
 
-<!-- ══════════════════════════════════════════════════════════════ -->
-<!-- PAGINA 3 — QUICK WIN + PERSONALIZZAZIONE                      -->
-<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════ PAGE 4: QUICK WIN ══ -->
 <div class="page" style="background:#FFFFFF;min-height:297mm;">
 
-  <!-- PAGE HEADER -->
-  <div style="background:#0A0F1E;padding:16px 56px;display:flex;
-              justify-content:space-between;align-items:center;">
+  <div class="ph">
     <span style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
-    <span style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Piano d'Azione &nbsp;·&nbsp; {date_str}</span>
-    <span style="font-size:9px;color:#475569;">3 / 3</span>
+    <span style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Piano d'Azione AI &nbsp;·&nbsp; {date_str}</span>
+    <span style="font-size:9px;color:#475569;">4 / 4</span>
   </div>
 
-  <div style="padding:30px 56px;">
-
-    <!-- Section title -->
-    <div style="margin-bottom:24px;">
-      <div style="font-size:8px;letter-spacing:0.22em;color:#94A3B8;text-transform:uppercase;margin-bottom:6px;">
-        Raccomandazioni prioritarie
+  <div style="padding:26px 52px;">
+    <div style="margin-bottom:20px;">
+      <div style="font-size:8px;letter-spacing:0.22em;color:#94A3B8;text-transform:uppercase;margin-bottom:5px;">
+        Azioni prioritarie con strumenti AI specifici
       </div>
-      <div style="font-size:20px;font-weight:900;color:#0A0F1E;text-transform:uppercase;letter-spacing:-0.01em;">
-        3 QUICK WIN <span style="color:#F59E0B;">IMPLEMENTABILI SUBITO</span>
+      <div style="font-size:19px;font-weight:900;color:#0A0F1E;text-transform:uppercase;letter-spacing:-0.01em;">
+        3 QUICK WIN <span style="color:#F59E0B;">AI-POWERED</span>
       </div>
     </div>
 
     {qw_cards}
 
-    <!-- PERSONALIZATION BOX -->
-    <div style="background:#0A0F1E;border-radius:10px;padding:24px 26px;margin-top:24px;">
-      <div style="font-size:8px;letter-spacing:0.2em;color:#F59E0B;text-transform:uppercase;
-                  font-weight:700;margin-bottom:18px;">
-        Questa analisi è stata costruita specificamente per {company}
-      </div>
-
-      <div style="display:flex;gap:28px;margin-bottom:{'18px' if top_pains else '0'};">
-        <div style="flex:1;">
-          <div style="font-size:9px;color:#475569;text-transform:uppercase;
-                      letter-spacing:0.12em;margin-bottom:10px;">
-            Processi critici analizzati
-          </div>
-          <div>{procs_html}</div>
-        </div>
-        <div style="flex:1;">
-          <div style="font-size:9px;color:#475569;text-transform:uppercase;
-                      letter-spacing:0.12em;margin-bottom:10px;">
-            Obiettivi dichiarati
-          </div>
-          <div style="font-size:11px;color:#CBD5E1;line-height:1.7;">{obj_html}</div>
-        </div>
-      </div>
-
-      {f"""
-      <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:16px;">
-        <div style="font-size:9px;color:#475569;text-transform:uppercase;
-                    letter-spacing:0.12em;margin-bottom:10px;">Pain points principali (scala 1–5)</div>
-        {pain_rows}
-      </div>""" if top_pains else ""}
-    </div>
-
-    <!-- CERTIFICATE FOOTER -->
-    <div style="margin-top:24px;padding-top:18px;border-top:1px solid #E2E8F0;
+    <!-- Certificate footer -->
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #E2E8F0;
                 display:flex;justify-content:space-between;align-items:center;">
       <div style="font-size:9px;color:#94A3B8;line-height:1.8;">
         Certificato N° <strong style="color:#0A0F1E;">{cert_number}</strong><br>
         Generato il {date_str} &nbsp;·&nbsp; Benchmarks: {benchmark['source']}<br>
-        Documento riservato — rilasciato esclusivamente a {contact} ({company})
+        Documento riservato — rilasciato a {contact} ({company})
       </div>
-      <div style="width:48px;height:48px;border:2px solid #E2E8F0;border-radius:50%;
+      <div style="width:44px;height:44px;border:2px solid #E2E8F0;border-radius:50%;
                   display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         <div style="text-align:center;">
-          <div style="font-size:7px;font-weight:900;color:#F59E0B;letter-spacing:0.12em;">AI·PMI</div>
-          <div style="font-size:5px;color:#94A3B8;letter-spacing:0.12em;">CERT.</div>
+          <div style="font-size:7px;font-weight:900;color:#F59E0B;letter-spacing:0.1em;">AI·PMI</div>
+          <div style="font-size:5px;color:#94A3B8;letter-spacing:0.1em;">CERT.</div>
         </div>
       </div>
     </div>
-
   </div>
 </div>
 
