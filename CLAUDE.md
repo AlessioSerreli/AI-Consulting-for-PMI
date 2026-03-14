@@ -102,90 +102,168 @@ Chiedi ad Alessio il file `backend/.env` con le chiavi API (non è nel repo per 
 
 ## Workflow di collaborazione (Alessio + Luigi)
 
-### Ruoli
-- **Alessio** → Backend (FastAPI, endpoint, logica AI, database)
-- **Luigi** → Frontend (Next.js, pagine, componenti, UI)
+### Istruzioni per Claude Code
+> **REGOLA CRITICA:** Claude non deve mai modificare file direttamente su `main`.
+> Ogni task deve iniziare su un branch dedicato e terminare con una Pull Request.
+> Quando ti viene chiesto di fare una modifica, proponi sempre: nome branch → comandi git → PR verso main.
+> Non fare commit su `main`, `develop`, o qualsiasi branch già esistente senza esplicita istruzione.
 
-### Struttura branch
+### Ruoli
+- **Alessio** → Backend (`backend/` — FastAPI, endpoint, logica AI, database)
+- **Luigi** → Frontend (`frontend/` — Next.js, pagine, componenti, UI)
+
+### Branch strategy
+
 ```
-main       ← produzione, protetto (solo merge via PR approvata)
-develop    ← branch di integrazione, da cui si parte sempre
-alessio/   ← branch di Alessio (es. alessio/landing-fix)
-luigi/     ← branch di Luigi (es. luigi/crm-endpoint)
+main     ← sempre stabile e rilasciabile. NESSUN push diretto. Solo merge via PR approvata.
+develop  ← OPZIONALE. Usare solo se più feature devono integrarsi e testarsi insieme
+           prima di andare su main. Per un singolo task indipendente, non serve.
 ```
+
+### Naming convention branch
+
+| Prefisso | Quando usarlo | Esempio |
+|---|---|---|
+| `feat/<nome>` | nuova funzionalità | `feat/survey-drag-rank` |
+| `fix/<nome>` | correzione bug | `fix/email-not-sending` |
+| `spike/<nome>` | esperimento / prototipo / esplorazione | `spike/pdf-weasyprint-v2` |
+
+Regola opzionale: aggiungere le iniziali per chiarire l'autore → `feat/luigi-survey-redesign`, `fix/alessio-crm-stats`.
 
 ### Regole di lavoro
-1. **Mai lavorare direttamente su `main`** — è protetto e richiede PR
-2. **Ogni sessione inizia così**:
-   ```
-   git checkout develop
-   git pull origin develop
-   git checkout -b alessio/nome-feature   (o luigi/nome-feature)
-   ```
-3. **Finita la feature**, si apre una PR verso `develop`:
-   ```
-   git push origin alessio/nome-feature
-   ```
-   Poi su GitHub: "Compare & pull request" → assegnare l'altro come reviewer
-4. **L'altro approva** la PR → merge su `develop`
-5. **Quando il codice è stabile** e testato su `develop` → PR verso `main`
+1. **Mai push diretti su `main`** — è protetto, richiede PR approvata
+2. **Ogni task = 1 branch** con naming `feat/`, `fix/`, o `spike/`
+3. Il branch parte sempre da `main` aggiornato (non da `develop` salvo necessità)
+4. **Ogni branch termina con una PR** verso `main` (o `develop` se serve coordinamento)
+5. La PR richiede: checklist pre-merge completata + review e approval dell'altro sviluppatore
+6. Non modificare mai file nell'area dell'altro senza accordo esplicito
+7. Nessun force push — se c'è un conflitto, risolverlo con merge o rebase condiviso
 
-### Regole pratiche
-- Commit frequenti con messaggi chiari (imperativo: "add", "fix", "update")
-- Fare `git pull origin develop` prima di iniziare ogni sessione
-- Non modificare mai file dell'area dell'altro senza avvisare
-- Se c'è un conflitto, risolverlo insieme — non fare mai force push
+### Quando usare `develop`
+Usa `develop` **solo** se:
+- Stai coordinando 2+ feature che devono girare insieme prima di essere pronte per `main`
+- Stai preparando un rilascio con più PR da integrare prima del deploy
+
+**Non usare `develop`** per task normali — ogni branch va direttamente su `main` via PR.
+
+---
+
+## Checklist pre-merge (obbligatoria prima di ogni PR)
+
+### Frontend (Luigi — `frontend/`)
+```bash
+cd frontend
+npm run lint          # ESLint — zero errori/warning bloccanti
+npx tsc --noEmit      # TypeScript — zero errori di tipo
+npm run build         # build completa — verifica che non ci siano errori di produzione
+```
+
+### Backend (Alessio — `backend/`)
+```bash
+# Nessun lint/test automatico configurato ancora — vedi TODO consigliati
+# Per ora: avviare il server e testare manualmente i nuovi endpoint via Swagger
+python -m uvicorn main:app --reload   # avvia da cartella backend/
+# → http://localhost:8000/docs → testare ogni endpoint modificato
+```
+
+### Review veloce (entrambi)
+- [ ] Il codice fa solo quello che il task richiedeva (no scope creep)
+- [ ] Nessuna chiave API o secret committata
+- [ ] I file `.env` non sono inclusi nel commit
+- [ ] Nessun `console.log` / `print()` di debug lasciato nel codice
+- [ ] Il branch è aggiornato con `main` (nessun conflitto pendente)
+
+---
+
+## TODO consigliati — lint/test non ancora configurati
+
+Questi strumenti **non sono ancora installati** nel repo. Aggiungerli prima del deploy.
+
+### Backend — Python
+```bash
+pip install ruff              # linter Python moderno e veloce
+pip install pytest pytest-asyncio httpx  # test per FastAPI async
+
+# Uso:
+ruff check backend/           # lint
+pytest backend/tests/         # test (creare cartella tests/ con i file)
+```
+
+### Frontend — Test unitari
+```bash
+# Opzione A: Vitest (consigliato per Next.js)
+npm install -D vitest @vitejs/plugin-react @testing-library/react
+
+# Opzione B: usare solo npm run build come smoke test CI (già disponibile)
+```
+
+### GitHub Actions (CI automatica)
+Creare `.github/workflows/ci.yml` per far girare lint + build ad ogni PR automaticamente.
+Vedere `docs/team-workflow.md` per il template suggerito.
 
 ---
 
 ## Cheatsheet Git — Comandi sessione
 
-### ALESSIO (Backend — cartella `backend/`)
+### ALESSIO (Backend — `backend/`)
 
 ```bash
-# Inizio sessione
-git checkout develop
-git pull origin develop
-git checkout -b alessio/nome-feature
+# Inizio sessione — si parte sempre da main aggiornato
+git checkout main
+git pull origin main
+git checkout -b feat/nome-task        # o fix/ o spike/
 
-# Durante il lavoro (ripeti spesso)
+# Durante il lavoro (commit frequenti)
 git add backend/
-git commit -m "feat: descrizione"
+git commit -m "feat: descrizione breve"
 
-# Fine sessione — push e PR
-git push origin alessio/nome-feature
-# Poi vai su github.com/AlessioSerreli/AI-Consulting-for-PMI
-# → "Compare & pull request" → base: develop → crea PR → chiedi a Luigi di approvare
+# Fine sessione — push e apri PR verso main
+git push origin feat/nome-task
+# → github.com/AlessioSerreli/AI-Consulting-for-PMI
+# → "Compare & pull request" → base: main → descrivi le modifiche → chiedi a Luigi di approvare
+
+# Dopo il merge
+git checkout main
+git pull origin main
+git branch -d feat/nome-task          # pulizia branch locale
 ```
 
-### LUIGI (Frontend — cartella `frontend/`)
+### LUIGI (Frontend — `frontend/`)
 
 ```bash
-# Inizio sessione
-git checkout develop
-git pull origin develop
-git checkout -b luigi/nome-feature
+# Inizio sessione — si parte sempre da main aggiornato
+git checkout main
+git pull origin main
+git checkout -b feat/nome-task        # o fix/ o spike/
 
-# Durante il lavoro (ripeti spesso)
+# Durante il lavoro (commit frequenti)
 git add frontend/
-git commit -m "feat: descrizione"
+git commit -m "feat: descrizione breve"
 
-# Fine sessione — push e PR
-git push origin luigi/nome-feature
-# Poi vai su github.com/AlessioSerreli/AI-Consulting-for-PMI
-# → "Compare & pull request" → base: develop → crea PR → chiedi ad Alessio di approvare
+# Pre-merge: eseguire checklist
+cd frontend && npm run lint && npx tsc --noEmit
+
+# Fine sessione — push e apri PR verso main
+git push origin feat/nome-task
+# → github.com/AlessioSerreli/AI-Consulting-for-PMI
+# → "Compare & pull request" → base: main → descrivi le modifiche → chiedi ad Alessio di approvare
+
+# Dopo il merge
+git checkout main
+git pull origin main
+git branch -d feat/nome-task          # pulizia branch locale
 ```
 
 ### Approvare una PR (entrambi)
 1. Vai su github.com/AlessioSerreli/AI-Consulting-for-PMI → tab **Pull Requests**
-2. Apri la PR dell'altro
+2. Apri la PR dell'altro → leggi il diff
 3. Clicca **"Add your review"** → **"Approve"** → **"Submit review"**
-4. Clicca **"Merge pull request"**
+4. Clicca **"Merge pull request"** (usa "Squash and merge" per tenere `main` pulita)
 
 ### Sincronizzarsi dopo un merge
 ```bash
-git checkout develop
-git pull origin develop
+git checkout main
+git pull origin main
 ```
 
 ## Punto di ripresa (prossima sessione)
