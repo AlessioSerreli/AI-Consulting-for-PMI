@@ -2,8 +2,29 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { GripVertical } from 'lucide-react'
 
 type PainKey = 'painEmail' | 'painDelegare' | 'painDati' | 'painErrori' | 'painTempo' | 'painMonitor'
+
+const PROCESSI = [
+  'Gestione ordini e clienti',
+  'Produzione e operations',
+  'Amministrazione e contabilità',
+  'Vendite e marketing',
+  'Risorse umane e formazione',
+  'Logistica e magazzino',
+  'Comunicazione interna',
+  'Reportistica e analisi dati',
+]
+
+const OBIETTIVI = [
+  ['⏱️', 'Risparmiare tempo, ridurre il caos'],
+  ['💶', 'Ridurre i costi operativi'],
+  ['📈', 'Crescere senza assumere'],
+  ['🎯', 'Migliorare la qualità'],
+  ['🏆', 'Essere più competitivi'],
+  ['🤲', 'Delegare meglio'],
+]
 
 interface FormData {
   nomeAzienda: string
@@ -13,7 +34,7 @@ interface FormData {
   settore: string
   dipendenti: string
   strumenti: string[]
-  processoKritico: string
+  processiOrdinati: string[]
   tempoEmail: number
   procDocumentati: string
   painEmail: number
@@ -24,20 +45,18 @@ interface FormData {
   painMonitor: number
   usaAI: string
   preoccupazioni: string[]
-  obiettivo: string
-  tempistiche: string
-  budget: string
+  obiettivi: string[]
   noteLibere: string
 }
 
 const INITIAL: FormData = {
   nomeAzienda: '', nomeContatto: '', email: '', telefono: '',
-  settore: '', dipendenti: '', strumenti: [], processoKritico: '',
+  settore: '', dipendenti: '', strumenti: [], processiOrdinati: [...PROCESSI],
   tempoEmail: 2, procDocumentati: '',
   painEmail: 0, painDelegare: 0, painDati: 0,
   painErrori: 0, painTempo: 0, painMonitor: 0,
   usaAI: '', preoccupazioni: [],
-  obiettivo: '', tempistiche: '', budget: '', noteLibere: '',
+  obiettivi: [], noteLibere: '',
 }
 
 const C = {
@@ -66,6 +85,7 @@ export default function SurveyPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null)
 
   const set = (field: keyof FormData, value: FormData[keyof FormData]) => {
     setData(prev => ({ ...prev, [field]: value }))
@@ -76,6 +96,27 @@ export default function SurveyPage() {
     const current = data[field] as string[]
     set(field, current.includes(value) ? current.filter(v => v !== value) : [...current, value])
   }
+
+  const toggleObiettivo = (label: string) => {
+    if (data.obiettivi.includes(label)) {
+      set('obiettivi', data.obiettivi.filter(v => v !== label))
+    } else if (data.obiettivi.length < 3) {
+      set('obiettivi', [...data.obiettivi, label])
+    }
+  }
+
+  // Drag-to-rank handlers
+  const handleDragStart = (i: number) => setDraggedIdx(i)
+  const handleDragOver = (e: React.DragEvent, i: number) => {
+    e.preventDefault()
+    if (draggedIdx === null || draggedIdx === i) return
+    const newOrder = [...data.processiOrdinati]
+    const [dragged] = newOrder.splice(draggedIdx, 1)
+    newOrder.splice(i, 0, dragged)
+    set('processiOrdinati', newOrder)
+    setDraggedIdx(i)
+  }
+  const handleDragEnd = () => setDraggedIdx(null)
 
   const validate = (s: number): boolean => {
     const e: Record<string, string> = {}
@@ -88,13 +129,12 @@ export default function SurveyPage() {
     }
     if (s === 2) {
       if (data.strumenti.length === 0) e.strumenti = 'Seleziona almeno uno strumento'
-      if (!data.processoKritico) e.processoKritico = 'Seleziona un processo'
     }
     if (s === 3) {
       if (!data.usaAI) e.usaAI = "Seleziona un'opzione"
     }
     if (s === 4) {
-      if (!data.obiettivo) e.obiettivo = 'Seleziona un obiettivo'
+      if (data.obiettivi.length === 0) e.obiettivi = 'Seleziona almeno un obiettivo'
     }
     setErrors(e)
     return Object.keys(e).length === 0
@@ -124,7 +164,7 @@ export default function SurveyPage() {
         employees: data.dipendenti,
         phone: data.telefono,
         tools: data.strumenti,
-        critical_process: data.processoKritico,
+        critical_processes: data.processiOrdinati,
         time_on_email: data.tempoEmail + 'h/giorno',
         processes_documented: data.procDocumentati,
         pain_email: data.painEmail,
@@ -135,9 +175,7 @@ export default function SurveyPage() {
         pain_monitor: data.painMonitor,
         ai_usage: data.usaAI,
         ai_concerns: data.preoccupazioni,
-        objective: data.obiettivo,
-        timeline: data.tempistiche,
-        budget: data.budget,
+        objectives: data.obiettivi,
         free_notes: data.noteLibere,
       }
       const res = await fetch(`${apiUrl}/survey`, {
@@ -157,115 +195,82 @@ export default function SurveyPage() {
   const progress = isSuccess ? 100 : (step / 4) * 100
 
   const cardStyle = (selected: boolean): React.CSSProperties => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
+    display: 'flex', alignItems: 'center', gap: '12px',
     padding: '14px 18px',
     background: selected ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)',
     border: `1.5px solid ${selected ? C.accent : C.border}`,
-    borderRadius: '10px',
-    fontSize: '14px',
+    borderRadius: '10px', fontSize: '14px',
     color: selected ? C.white : C.light,
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    userSelect: 'none',
+    cursor: 'pointer', transition: 'all 0.2s', userSelect: 'none',
+  })
+
+  const cardDisabled = (selected: boolean): React.CSSProperties => ({
+    ...cardStyle(selected),
+    opacity: selected ? 1 : 0.35,
+    cursor: selected ? 'pointer' : 'not-allowed',
   })
 
   const inputStyle = (hasError = false): React.CSSProperties => ({
-    width: '100%',
-    background: 'rgba(255,255,255,0.04)',
+    width: '100%', background: 'rgba(255,255,255,0.04)',
     border: `1.5px solid ${hasError ? '#EF4444' : C.border}`,
-    borderRadius: '10px',
-    padding: '14px 18px',
-    fontFamily: "'DM Sans', sans-serif",
-    fontSize: '15px',
-    color: C.white,
-    outline: 'none',
-    transition: 'border-color 0.2s',
+    borderRadius: '10px', padding: '14px 18px',
+    fontFamily: "'DM Sans', sans-serif", fontSize: '15px',
+    color: C.white, outline: 'none', transition: 'border-color 0.2s',
   })
 
   const labelStyle: React.CSSProperties = {
-    display: 'block',
-    fontSize: '13px',
-    fontWeight: 600,
-    color: C.light,
-    marginBottom: '8px',
-    letterSpacing: '0.02em',
+    display: 'block', fontSize: '13px', fontWeight: 600,
+    color: C.light, marginBottom: '8px', letterSpacing: '0.02em',
   }
 
   const errStyle: React.CSSProperties = {
-    fontSize: '12px',
-    color: '#EF4444',
-    marginTop: '6px',
+    fontSize: '12px', color: '#EF4444', marginTop: '6px',
     fontFamily: "'DM Mono', monospace",
   }
 
   const btnNext: React.CSSProperties = {
-    background: C.accent,
-    color: C.navy,
-    fontFamily: "'DM Sans', sans-serif",
-    fontWeight: 700,
-    fontSize: '15px',
-    padding: '16px 36px',
-    borderRadius: '10px',
-    border: 'none',
-    cursor: 'pointer',
+    background: C.accent, color: C.navy,
+    fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
+    fontSize: '15px', padding: '16px 36px',
+    borderRadius: '10px', border: 'none', cursor: 'pointer',
   }
 
   const btnBack: React.CSSProperties = {
-    background: 'transparent',
-    color: C.gray,
-    fontFamily: "'DM Sans', sans-serif",
-    fontSize: '14px',
-    padding: '16px 24px',
-    borderRadius: '10px',
-    border: `1.5px solid ${C.border}`,
-    cursor: 'pointer',
+    background: 'transparent', color: C.gray,
+    fontFamily: "'DM Sans', sans-serif", fontSize: '14px',
+    padding: '16px 24px', borderRadius: '10px',
+    border: `1.5px solid ${C.border}`, cursor: 'pointer',
   }
 
   const headingStyle: React.CSSProperties = {
     fontFamily: "'Bebas Neue', sans-serif",
     fontSize: 'clamp(36px, 5vw, 60px)',
-    lineHeight: 0.95,
-    letterSpacing: '0.02em',
-    color: C.white,
-    marginBottom: '10px',
+    lineHeight: 0.95, letterSpacing: '0.02em',
+    color: C.white, marginBottom: '10px',
   }
 
   const tagStyle: React.CSSProperties = {
-    fontFamily: "'DM Mono', monospace",
-    fontSize: '11px',
-    letterSpacing: '0.15em',
-    textTransform: 'uppercase',
-    color: C.accent,
-    marginBottom: '12px',
+    fontFamily: "'DM Mono', monospace", fontSize: '11px',
+    letterSpacing: '0.15em', textTransform: 'uppercase',
+    color: C.accent, marginBottom: '12px',
   }
 
   const subStyle: React.CSSProperties = {
-    fontSize: '15px',
-    color: C.gray,
-    lineHeight: 1.6,
-    marginBottom: '40px',
-    maxWidth: '520px',
+    fontSize: '15px', color: '#CBD5E1',
+    lineHeight: 1.6, marginBottom: '40px', maxWidth: '520px',
   }
 
   const grid2: React.CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
-    marginBottom: '24px',
+    display: 'grid', gridTemplateColumns: '1fr 1fr',
+    gap: '20px', marginBottom: '24px',
   }
 
   const grid2cards: React.CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '10px',
+    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px',
   }
 
   const grid3cards: React.CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '10px',
+    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px',
   }
 
   const icon = (e: string) => (
@@ -274,9 +279,7 @@ export default function SurveyPage() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: C.navy, color: C.white, minHeight: '100vh' }}>
-      {/* Background grid */}
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
+      <div className="fixed inset-0 pointer-events-none z-0" style={{
         backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
         backgroundSize: '60px 60px',
       }} />
@@ -296,22 +299,21 @@ export default function SurveyPage() {
           <div style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
             <div style={{ height: '100%', background: C.accent, borderRadius: '2px', width: `${progress}%`, transition: 'width 0.5s cubic-bezier(.4,0,.2,1)' }} />
           </div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '11px', color: C.gray, whiteSpace: 'nowrap', letterSpacing: '0.08em' }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '11px', color: '#94A3B8', whiteSpace: 'nowrap', letterSpacing: '0.08em' }}>
             {isSuccess ? 'COMPLETATO ✓' : `SEZIONE ${step} / 4`}
           </div>
         </div>
-        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '11px', color: C.gray }}>DIAGNOSI GRATUITA</div>
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '11px', color: '#94A3B8' }}>DIAGNOSI GRATUITA</div>
       </div>
 
-      {/* Loading overlay */}
+      {/* Loading */}
       {isSubmitting && !isSuccess && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,30,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, flexDirection: 'column', gap: '20px' }}>
           <div className="survey-spinner" />
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '13px', color: C.gray, letterSpacing: '0.1em' }}>INVIO IN CORSO...</div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '13px', color: '#94A3B8', letterSpacing: '0.1em' }}>INVIO IN CORSO...</div>
         </div>
       )}
 
-      {/* Main content */}
       <div style={{ paddingTop: '64px', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
         <div style={{ width: '100%', maxWidth: '780px', padding: '60px 40px' }}>
 
@@ -320,13 +322,13 @@ export default function SurveyPage() {
             <div className="survey-fadein" style={{ textAlign: 'center', padding: '60px 20px' }}>
               <div style={{ width: '80px', height: '80px', background: 'rgba(16,185,129,0.15)', border: `2px solid ${C.green}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 32px', fontSize: '36px' }}>✓</div>
               <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '52px', color: C.white, letterSpacing: '0.02em', marginBottom: '16px' }}>RICHIESTA INVIATA!</div>
-              <p style={{ fontSize: '16px', color: C.gray, lineHeight: 1.7, maxWidth: '480px', margin: '0 auto 32px' }}>
-                Abbiamo ricevuto la tua diagnosi. Entro <strong style={{ color: C.white }}>5 giorni lavorativi</strong> riceverai il tuo report personalizzato con il <strong style={{ color: C.accent }}>Certificato di Efficienza Operativa</strong>.
+              <p style={{ fontSize: '16px', color: '#CBD5E1', lineHeight: 1.7, maxWidth: '480px', margin: '0 auto 32px' }}>
+                Abbiamo ricevuto la tua diagnosi. Entro <strong style={{ color: C.white }}>5 giorni lavorativi</strong> riceverai il tuo report con il <strong style={{ color: C.accent }}>Certificato di Efficienza Operativa</strong>.
               </p>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', padding: '14px 24px', borderRadius: '10px', fontSize: '14px', color: C.accent, fontWeight: 600 }}>
                 ★ Il tuo Certificato di Efficienza Operativa è in preparazione
               </div>
-              <p style={{ marginTop: '24px', fontSize: '13px', color: C.gray }}>Controlla la tua email — riceverai una conferma a breve.</p>
+              <p style={{ marginTop: '24px', fontSize: '13px', color: '#94A3B8' }}>Controlla la tua email — riceverai una conferma a breve.</p>
             </div>
           )}
 
@@ -398,10 +400,11 @@ export default function SurveyPage() {
               <h1 style={headingStyle}>COME<br />LAVORATE<br />OGGI?</h1>
               <p style={subStyle}>Vogliamo capire gli strumenti che usi e dove si concentrano le inefficienze.</p>
 
+              {/* Strumenti */}
               <div style={{ marginBottom: '24px' }}>
                 <label style={labelStyle}>
                   Quali strumenti usi per gestire il lavoro? <span style={{ color: C.accent }}>*</span>{' '}
-                  <span style={{ color: C.gray, fontWeight: 400 }}>(più risposte)</span>
+                  <span style={{ color: '#94A3B8', fontWeight: 400 }}>(più risposte)</span>
                 </label>
                 <div style={grid2cards}>
                   {[['📧', 'Email / WhatsApp'], ['📊', 'Fogli Excel / Google Sheets'], ['🖥️', 'Gestionale ERP'], ['🤝', 'CRM (gestione clienti)'], ['📋', 'Project management'], ['📝', 'Carta / memoria']].map(([e, label]) => (
@@ -413,31 +416,67 @@ export default function SurveyPage() {
                 {errors.strumenti && <div style={errStyle}>{errors.strumenti}</div>}
               </div>
 
+              {/* Drag-to-rank processi */}
               <div style={{ marginBottom: '24px' }}>
-                <label style={labelStyle}>Qual è il processo aziendale più critico per voi? <span style={{ color: C.accent }}>*</span></label>
-                <select className="survey-input" style={{ ...inputStyle(!!errors.processoKritico), cursor: 'pointer' }} value={data.processoKritico} onChange={e => set('processoKritico', e.target.value)}>
-                  <option value="">— Seleziona —</option>
-                  {['Gestione ordini e clienti', 'Produzione e operations', 'Amministrazione e contabilità', 'Vendite e marketing', 'Risorse umane e formazione', 'Logistica e magazzino', 'Comunicazione interna', 'Reportistica e analisi dati'].map(v => (
-                    <option key={v} value={v} style={{ background: '#111827' }}>{v}</option>
+                <label style={labelStyle}>
+                  Ordina per criticità i processi aziendali{' '}
+                  <span style={{ color: '#94A3B8', fontWeight: 400 }}>(trascina dal più al meno critico)</span>
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {data.processiOrdinati.map((processo, i) => (
+                    <div
+                      key={processo}
+                      draggable
+                      onDragStart={() => handleDragStart(i)}
+                      onDragOver={e => handleDragOver(e, i)}
+                      onDragEnd={handleDragEnd}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                        padding: '12px 16px',
+                        background: draggedIdx === i ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.03)',
+                        border: `1.5px solid ${draggedIdx === i ? C.accent : C.border}`,
+                        borderRadius: '10px', cursor: 'grab',
+                        transition: 'all 0.15s',
+                        userSelect: 'none',
+                        opacity: draggedIdx === i ? 0.85 : 1,
+                      }}
+                    >
+                      {/* Rank badge */}
+                      <div style={{
+                        width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
+                        background: i === 0 ? C.accent : i === 1 ? 'rgba(245,158,11,0.4)' : i === 2 ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontFamily: "'Bebas Neue', sans-serif", fontSize: '15px',
+                        color: i < 3 ? C.navy : '#94A3B8',
+                        fontWeight: 700,
+                      }}>
+                        {i + 1}
+                      </div>
+                      <span style={{ flex: 1, fontSize: '14px', color: C.light }}>{processo}</span>
+                      <GripVertical style={{ width: '16px', height: '16px', color: '#475569', flexShrink: 0 }} />
+                    </div>
                   ))}
-                </select>
-                {errors.processoKritico && <div style={errStyle}>{errors.processoKritico}</div>}
+                </div>
+                <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748B', fontFamily: "'DM Mono', monospace" }}>
+                  I primi 3 (evidenziati) saranno analizzati con priorità nel report
+                </div>
               </div>
 
+              {/* Slider tempo email */}
               <div style={{ marginBottom: '24px' }}>
                 <label style={labelStyle}>Quanto tempo passa mediamente il team in riunioni o email ogni giorno?</label>
                 <input type="range" className="survey-range" min={0} max={8} step={0.5} value={data.tempoEmail}
-                  onChange={e => set('tempoEmail', parseFloat(e.target.value))}
-                  style={{ width: '100%' }} />
+                  onChange={e => set('tempoEmail', parseFloat(e.target.value))} style={{ width: '100%' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                   <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '28px', color: C.accent }}>{data.tempoEmail}h</span>
-                  <span style={{ fontSize: '12px', color: C.gray }}>per persona / giorno</span>
+                  <span style={{ fontSize: '12px', color: '#94A3B8' }}>per persona / giorno</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'DM Mono', monospace", fontSize: '11px', color: C.gray }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'DM Mono', monospace", fontSize: '11px', color: '#94A3B8' }}>
                   <span>0h</span><span>4h</span><span>8h</span>
                 </div>
               </div>
 
+              {/* Processi documentati */}
               <div style={{ marginBottom: '24px' }}>
                 <label style={labelStyle}>I vostri processi sono documentati?</label>
                 <div style={grid2cards}>
@@ -473,7 +512,7 @@ export default function SurveyPage() {
                           width: '32px', height: '32px', borderRadius: '8px',
                           border: `1.5px solid ${(data[key] as number) >= n ? C.accent : C.border}`,
                           background: (data[key] as number) >= n ? 'rgba(245,158,11,0.15)' : 'transparent',
-                          color: (data[key] as number) >= n ? C.accent : C.gray,
+                          color: (data[key] as number) >= n ? C.accent : '#94A3B8',
                           cursor: 'pointer', fontSize: '13px', fontWeight: 600,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>{n}</button>
@@ -496,7 +535,7 @@ export default function SurveyPage() {
               </div>
 
               <div style={{ marginBottom: '24px' }}>
-                <label style={labelStyle}>Qual è la tua principale preoccupazione rispetto all'AI? <span style={{ color: C.gray, fontWeight: 400 }}>(più risposte)</span></label>
+                <label style={labelStyle}>Qual è la tua principale preoccupazione rispetto all'AI? <span style={{ color: '#94A3B8', fontWeight: 400 }}>(più risposte)</span></label>
                 <div style={grid2cards}>
                   {[['💰', 'Costi troppo alti'], ['🗺️', 'Non so da dove iniziare'], ['👥', 'Il team non è pronto'], ['🔒', 'Privacy e sicurezza dati'], ['✅', 'Nessuna preoccupazione'], ['🤔', 'Non vedo il beneficio']].map(([e, label]) => (
                     <div key={label} style={cardStyle(data.preoccupazioni.includes(label))} onClick={() => toggleArr('preoccupazioni', label)}>
@@ -518,46 +557,58 @@ export default function SurveyPage() {
             <div className="survey-fadein">
               <div style={tagStyle}>Sezione 4 di 4 — Obiettivi</div>
               <h1 style={headingStyle}>COSA<br />VUOI<br />OTTENERE?</h1>
-              <p style={subStyle}>Ultime domande per calibrare il tuo report e capire come possiamo aiutarti al meglio.</p>
+              <p style={subStyle}>Ultima sezione per calibrare il tuo report e capire come possiamo aiutarti al meglio.</p>
 
-              <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px', padding: '16px 20px', fontSize: '13px', color: C.gray, lineHeight: 1.6, marginBottom: '28px' }}>
+              <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px', padding: '16px 20px', fontSize: '13px', color: '#CBD5E1', lineHeight: 1.6, marginBottom: '28px' }}>
                 ⭐ Riceverai il tuo <strong style={{ color: C.accent }}>report personalizzato + Certificato di Efficienza Operativa</strong> entro 5 giorni lavorativi, completamente gratuito.
               </div>
 
+              {/* Obiettivi multi-select max 3 */}
               <div style={{ marginBottom: '24px' }}>
-                <label style={labelStyle}>Qual è il tuo obiettivo principale? <span style={{ color: C.accent }}>*</span></label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>
+                    Qual è il tuo obiettivo principale? <span style={{ color: C.accent }}>*</span>
+                  </label>
+                  <div style={{
+                    fontFamily: "'DM Mono', monospace", fontSize: '11px',
+                    color: data.obiettivi.length === 3 ? C.accent : '#94A3B8',
+                    letterSpacing: '0.05em',
+                  }}>
+                    {data.obiettivi.length}/3 selezionati
+                  </div>
+                </div>
+                {data.obiettivi.length === 3 && (
+                  <div style={{ fontSize: '12px', color: C.accent, fontFamily: "'DM Mono', monospace", marginBottom: '10px' }}>
+                    Massimo 3 obiettivi raggiunto — deseleziona uno per cambiare
+                  </div>
+                )}
                 <div style={grid2cards}>
-                  {[['⏱️', 'Risparmiare tempo, ridurre il caos'], ['💶', 'Ridurre i costi operativi'], ['📈', 'Crescere senza assumere'], ['🎯', 'Migliorare la qualità'], ['🏆', 'Essere più competitivi'], ['🤲', 'Delegare meglio']].map(([e, label]) => (
-                    <div key={label} style={cardStyle(data.obiettivo === label)} onClick={() => set('obiettivo', label)}>
-                      {icon(e)} {label}
-                    </div>
-                  ))}
+                  {OBIETTIVI.map(([e, label]) => {
+                    const selected = data.obiettivi.includes(label)
+                    const maxed = data.obiettivi.length >= 3 && !selected
+                    return (
+                      <div key={label} style={maxed ? cardDisabled(false) : cardStyle(selected)}
+                        onClick={() => !maxed && toggleObiettivo(label)}>
+                        {icon(e)} {label}
+                        {selected && (
+                          <span style={{
+                            marginLeft: 'auto', width: '20px', height: '20px',
+                            background: C.accent, borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontFamily: "'Bebas Neue', sans-serif", fontSize: '12px',
+                            color: C.navy, flexShrink: 0,
+                          }}>
+                            {data.obiettivi.indexOf(label) + 1}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-                {errors.obiettivo && <div style={errStyle}>{errors.obiettivo}</div>}
+                {errors.obiettivi && <div style={errStyle}>{errors.obiettivi}</div>}
               </div>
 
-              <div style={{ marginBottom: '24px' }}>
-                <label style={labelStyle}>In quanto tempo vorresti vedere i primi risultati?</label>
-                <div style={grid3cards}>
-                  {[['⚡', 'Subito (1 mese)'], ['📅', 'Breve (3 mesi)'], ['🗓️', 'Medio (6-12 mesi)']].map(([e, label]) => (
-                    <div key={label} style={cardStyle(data.tempistiche === label)} onClick={() => set('tempistiche', label)}>
-                      {icon(e)} {label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '24px' }}>
-                <label style={labelStyle}>Budget indicativo per un progetto di ottimizzazione</label>
-                <div style={grid2cards}>
-                  {[['🆓', 'Solo diagnosi gratuita'], ['💼', 'Fino a 2.000€'], ['📦', '2.000€ – 5.000€'], ['🏗️', 'Oltre 5.000€']].map(([e, label]) => (
-                    <div key={label} style={cardStyle(data.budget === label)} onClick={() => set('budget', label)}>
-                      {icon(e)} {label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
+              {/* Note libere */}
               <div style={{ marginBottom: '24px' }}>
                 <label style={labelStyle}>Vuoi aggiungere qualcosa che non abbiamo chiesto?</label>
                 <textarea className="survey-input" value={data.noteLibere} onChange={e => set('noteLibere', e.target.value)}
@@ -569,7 +620,8 @@ export default function SurveyPage() {
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '40px' }}>
                 <button style={btnBack} onClick={prevStep}>← Indietro</button>
-                <button style={{ ...btnNext, opacity: isSubmitting ? 0.5 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+                <button
+                  style={{ ...btnNext, opacity: isSubmitting ? 0.5 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
                   onClick={submit} disabled={isSubmitting}>
                   ✉️ Invia e ricevi il report gratuito
                 </button>
