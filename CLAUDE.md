@@ -108,6 +108,52 @@ Chiedi ad Alessio il file `backend/.env` con le chiavi API (non è nel repo per 
 > Quando ti viene chiesto di fare una modifica, proponi sempre: nome branch → comandi git → PR verso main.
 > Non fare commit su `main`, `develop`, o qualsiasi branch già esistente senza esplicita istruzione.
 
+### Come parlare a Claude per lavorare secondo questo workflow
+
+Usa questi prompt copia-incolla nel terminale di Claude Code. Sostituisci solo le parti in `<angolari>`.
+
+**Iniziare un task nuovo:**
+```
+Crea il branch feat/<nome-task> da main, poi implementa <descrizione di cosa fare>.
+Lavora solo in <frontend/ oppure backend/>. Alla fine mostrami la checklist pre-merge.
+```
+
+**Esempio reale:**
+```
+Crea il branch feat/thank-you-calendly da main, poi sostituisci il link placeholder
+del Calendly in frontend/app/thank-you/page.tsx con "<url>". Lavora solo in frontend/.
+Alla fine mostrami la checklist pre-merge.
+```
+
+**Correggere un bug:**
+```
+Crea il branch fix/<nome-bug> da main, poi correggi <descrizione del problema>
+in <file o area>. Alla fine esegui la checklist pre-merge.
+```
+
+**Esplorare / prototipare senza impegnarsi:**
+```
+Crea il branch spike/<nome> da main e sperimenta <idea> in <area>.
+Non aprire PR — voglio solo vedere se funziona.
+```
+
+**Eseguire la checklist pre-merge:**
+```
+Siamo su branch <nome-branch>. Esegui la checklist pre-merge completa
+(lint, tsc, build) e riportami l'esito prima di procedere con la PR.
+```
+
+**Aprire la PR a fine lavoro:**
+```
+Il lavoro su <nome-branch> è finito e la checklist è ok.
+Crea la PR verso main con titolo "<titolo>" e assegna come reviewer <Alessio o Luigi>.
+```
+
+**Sincronizzarsi dopo un merge altrui:**
+```
+Aggiorna il mio branch locale con l'ultimo main e dimmi se ci sono conflitti.
+```
+
 ### Ruoli
 - **Alessio** → Backend (`backend/` — FastAPI, endpoint, logica AI, database)
 - **Luigi** → Frontend (`frontend/` — Next.js, pagine, componenti, UI)
