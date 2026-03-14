@@ -23,3 +23,32 @@ CREATE INDEX IF NOT EXISTS leads_created_at_idx ON leads(created_at DESC);
 
 -- RLS: disabilita per ora (ambiente dev), da abilitare in prod
 ALTER TABLE leads DISABLE ROW LEVEL SECURITY;
+
+-- -------------------------------------------------------
+-- Tabella prospecting_leads: lead trovati via Apify scraping
+-- Esegui nel SQL Editor di Supabase dopo la tabella leads
+-- -------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS prospecting_leads (
+  id               UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  company_name     TEXT NOT NULL,
+  category         TEXT,
+  address          TEXT,
+  city             TEXT,
+  phone            TEXT,
+  website          TEXT,
+  email            TEXT,
+  rating           FLOAT,
+  review_count     INTEGER DEFAULT 0,
+  google_maps_url  TEXT,
+  apify_run_id     TEXT,
+  status           TEXT NOT NULL DEFAULT 'new',  -- new, contacted, converted, dismissed
+  notes            TEXT,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS prospecting_leads_status_idx ON prospecting_leads(status);
+CREATE INDEX IF NOT EXISTS prospecting_leads_created_at_idx ON prospecting_leads(created_at DESC);
+CREATE INDEX IF NOT EXISTS prospecting_leads_run_idx ON prospecting_leads(apify_run_id);
+
+ALTER TABLE prospecting_leads DISABLE ROW LEVEL SECURITY;
