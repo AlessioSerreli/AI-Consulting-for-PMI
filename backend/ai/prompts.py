@@ -24,18 +24,24 @@ SCORECARD_USER_TEMPLATE = """Analizza questa PMI italiana e genera la scorecard:
 Azienda: {company_name}
 Settore: {sector}
 Dipendenti: {employees}
-Anzianità: {founded_year}
 
-Processi principali: {main_processes}
-Livello manualità (1-10): {manual_processes}
-Principale spreco di tempo: {time_waste}
+Processi aziendali (in ordine di criticità): {critical_processes}
+Strumenti digitali usati: {tools}
+Tempo giornaliero in email/riunioni: {time_on_email}
+Processi documentati: {processes_documented}
 
-Strumenti digitali attuali: {current_tools}
-Soddisfazione strumenti (1-10): {digital_satisfaction}
+Criticità (scala 1-5):
+- Email e riunioni: {pain_email}
+- Difficoltà a delegare: {pain_delegare}
+- Decisioni senza dati: {pain_dati}
+- Errori per mancanza procedure: {pain_errori}
+- Attività manuali ripetitive: {pain_tempo}
+- Monitorare le performance: {pain_monitor}
 
-Principale problema: {main_pain}
-Familiarità AI: {ai_knowledge}
-Obiettivo principale: {main_goal}
+Utilizzo attuale AI: {ai_usage}
+Preoccupazioni sull'AI: {ai_concerns}
+Obiettivi principali: {objectives}
+Note aggiuntive: {free_notes}
 
 Genera la scorecard in questo formato JSON:
 {{

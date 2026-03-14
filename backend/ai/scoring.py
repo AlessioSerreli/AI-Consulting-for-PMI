@@ -7,19 +7,29 @@ from ai.prompts import SCORECARD_SYSTEM_PROMPT, SCORECARD_USER_TEMPLATE
 async def generate_scorecard(survey_data: dict) -> dict:
     client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+    def join_list(val):
+        if isinstance(val, list):
+            return ", ".join(val)
+        return str(val) if val else "N/A"
+
     user_message = SCORECARD_USER_TEMPLATE.format(
         company_name=survey_data.get("company_name", "N/A"),
         sector=survey_data.get("sector", "N/A"),
         employees=survey_data.get("employees", "N/A"),
-        founded_year=survey_data.get("founded_year", "N/A"),
-        main_processes=", ".join(survey_data.get("main_processes", [])),
-        manual_processes=survey_data.get("manual_processes", "N/A"),
-        time_waste=survey_data.get("time_waste", "N/A"),
-        current_tools=", ".join(survey_data.get("current_tools", [])),
-        digital_satisfaction=survey_data.get("digital_satisfaction", "N/A"),
-        main_pain=survey_data.get("main_pain", "N/A"),
-        ai_knowledge=survey_data.get("ai_knowledge", "N/A"),
-        main_goal=survey_data.get("main_goal", "N/A"),
+        critical_processes=join_list(survey_data.get("critical_processes") or survey_data.get("main_processes")),
+        tools=join_list(survey_data.get("tools") or survey_data.get("current_tools")),
+        time_on_email=survey_data.get("time_on_email", "N/A"),
+        processes_documented=survey_data.get("processes_documented", "N/A"),
+        pain_email=survey_data.get("pain_email", "N/A"),
+        pain_delegare=survey_data.get("pain_delegare", "N/A"),
+        pain_dati=survey_data.get("pain_dati", "N/A"),
+        pain_errori=survey_data.get("pain_errori", "N/A"),
+        pain_tempo=survey_data.get("pain_tempo", "N/A"),
+        pain_monitor=survey_data.get("pain_monitor", "N/A"),
+        ai_usage=survey_data.get("ai_usage", "N/A"),
+        ai_concerns=join_list(survey_data.get("ai_concerns")),
+        objectives=join_list(survey_data.get("objectives") or survey_data.get("main_goal")),
+        free_notes=survey_data.get("free_notes", "N/A"),
     )
 
     message = await client.messages.create(
