@@ -348,27 +348,28 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
   .ph {{
     background: #0A0F1E;
     padding: 15px 52px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
   }}
+  .ph table {{ width: 100%; border-collapse: collapse; }}
 </style>
 </head>
 <body>
 
 
 <!-- ══════════════════════════════════════ PAGE 1: COVER ══ -->
-<div class="page" style="background:#0A0F1E;color:#F8FAFC;padding:48px 52px;
-     display:flex;flex-direction:column;min-height:297mm;">
+<div class="page" style="background:#0A0F1E;color:#F8FAFC;padding:48px 52px;">
 
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;">
-    <span style="font-size:12px;letter-spacing:0.28em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
-    <div style="text-align:right;">
-      <div style="font-size:8px;color:#475569;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:2px;">N° Certificato</div>
-      <div style="font-size:10px;color:#64748B;font-family:Courier New,monospace;">{cert_number}</div>
-    </div>
-  </div>
+  <!-- Header -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:36px;">
+    <tr>
+      <td style="font-size:12px;letter-spacing:0.28em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</td>
+      <td align="right">
+        <div style="font-size:8px;color:#475569;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:2px;">N° Certificato</div>
+        <div style="font-size:10px;color:#64748B;font-family:Courier New,monospace;">{cert_number}</div>
+      </td>
+    </tr>
+  </table>
 
+  <!-- Title -->
   <div style="border-top:1px solid rgba(245,158,11,0.3);padding-top:26px;margin-bottom:24px;">
     <div style="font-size:8px;letter-spacing:0.22em;color:#475569;text-transform:uppercase;margin-bottom:10px;">
       Documento di analisi riservato
@@ -379,6 +380,7 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
     </div>
   </div>
 
+  <!-- Company box -->
   <div style="border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:18px 22px;
               margin-bottom:24px;background:rgba(255,255,255,0.03);">
     <div style="font-size:8px;letter-spacing:0.22em;color:#475569;text-transform:uppercase;margin-bottom:8px;">Rilasciato a</div>
@@ -386,49 +388,59 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
     <div style="font-size:11px;color:#64748B;">{sector} &nbsp;·&nbsp; {employees} dipendenti &nbsp;·&nbsp; Italia</div>
   </div>
 
-  <div style="display:flex;gap:18px;align-items:flex-start;margin-bottom:22px;">
-    <div style="background:{level_color};border-radius:10px;padding:14px 20px;min-width:110px;text-align:center;flex-shrink:0;">
-      <div style="font-size:44px;font-weight:900;color:#0A0F1E;line-height:1;">{overall}</div>
-      <div style="font-size:11px;color:rgba(10,15,30,0.65);font-weight:600;">/100</div>
-    </div>
-    <div style="padding-top:4px;flex:1;">
-      <div style="font-size:14px;font-weight:800;color:#FFFFFF;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{cert_level}</div>
-      <div style="display:inline-block;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);
-                  border-radius:20px;padding:3px 12px;font-size:10px;color:#F59E0B;font-weight:700;margin-bottom:10px;">{top_label}</div>
-      <!-- INEFFICIENCY COST BOX -->
-      <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 12px;">
-        <div style="font-size:9px;color:#FCA5A5;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">
-          Costo stimato dell'inefficienza attuale
+  <!-- Score + level: TABLE per compatibilità email -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;">
+    <tr>
+      <td width="130" valign="top">
+        <div style="background:{level_color};border-radius:10px;padding:14px 20px;text-align:center;">
+          <div style="font-size:44px;font-weight:900;color:#0A0F1E;line-height:1;">{overall}</div>
+          <div style="font-size:11px;color:rgba(10,15,30,0.65);font-weight:600;">/100</div>
         </div>
-        <div style="font-size:13px;font-weight:700;color:#FFFFFF;">
-          {ineff['total_k']}/anno &nbsp;·&nbsp;
-          <span style="color:#F59E0B;">Recuperabile: {ineff['recover_k']}/anno</span>
+      </td>
+      <td valign="top" style="padding-left:18px;padding-top:4px;">
+        <div style="font-size:14px;font-weight:800;color:#FFFFFF;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{cert_level}</div>
+        <div style="display:inline-block;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);
+                    border-radius:20px;padding:3px 12px;font-size:10px;color:#F59E0B;font-weight:700;margin-bottom:10px;">{top_label}</div>
+        <!-- INEFFICIENCY COST BOX -->
+        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 12px;">
+          <div style="font-size:9px;color:#FCA5A5;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">
+            Costo stimato dell'inefficienza attuale
+          </div>
+          <div style="font-size:13px;font-weight:700;color:#FFFFFF;">
+            {ineff['total_k']}/anno &nbsp;·&nbsp;
+            <span style="color:#F59E0B;">Recuperabile: {ineff['recover_k']}/anno</span>
+          </div>
+          <div style="font-size:9px;color:#94A3B8;margin-top:2px;">
+            Basato su {ineff['n_emp']} dip. × {ineff['hours']}h/giorno × 220 giorni lavorativi
+          </div>
         </div>
-        <div style="font-size:9px;color:#94A3B8;margin-top:2px;">
-          Basato su {ineff['n_emp']} dip. × {ineff['hours']}h/giorno × 220 giorni lavorativi
-        </div>
-      </div>
-    </div>
-  </div>
+      </td>
+    </tr>
+  </table>
 
-  <div style="border-left:3px solid #F59E0B;padding-left:16px;margin-bottom:auto;">
+  <!-- Executive summary -->
+  <div style="border-left:3px solid #F59E0B;padding-left:16px;margin-bottom:24px;">
     <div style="font-size:12px;color:#CBD5E1;line-height:1.8;font-style:italic;">&ldquo;{executive}&rdquo;</div>
   </div>
 
-  <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:18px;margin-top:24px;
-              display:flex;justify-content:space-between;align-items:flex-end;">
-    <div>
-      <div style="font-size:13px;font-weight:700;color:#FFFFFF;margin-bottom:2px;">Luigi Negro</div>
-      <div style="font-size:9px;color:#475569;margin-bottom:2px;">AI Expert &amp; Partner · AI.PMI Italia</div>
-      <div style="font-size:9px;color:#475569;">{date_str}</div>
-    </div>
-    <div style="width:50px;height:50px;border:2px solid rgba(245,158,11,0.4);border-radius:50%;
-                display:flex;align-items:center;justify-content:center;">
-      <div style="text-align:center;">
-        <div style="font-size:8px;font-weight:900;color:#F59E0B;letter-spacing:0.12em;">AI·PMI</div>
-        <div style="font-size:5px;color:#475569;letter-spacing:0.12em;">CERT.</div>
-      </div>
-    </div>
+  <!-- Footer: TABLE per compatibilità email -->
+  <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:18px;margin-top:24px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td valign="bottom">
+          <div style="font-size:13px;font-weight:700;color:#FFFFFF;margin-bottom:2px;">Luigi Negro</div>
+          <div style="font-size:9px;color:#475569;margin-bottom:2px;">AI Expert &amp; Partner · AI.PMI Italia</div>
+          <div style="font-size:9px;color:#475569;">{date_str}</div>
+        </td>
+        <td align="right" valign="bottom">
+          <div style="width:50px;height:50px;border:2px solid rgba(245,158,11,0.4);border-radius:50%;
+                      display:inline-table;text-align:center;padding:14px 0 0;">
+            <div style="font-size:8px;font-weight:900;color:#F59E0B;letter-spacing:0.12em;">AI·PMI</div>
+            <div style="font-size:5px;color:#475569;letter-spacing:0.12em;">CERT.</div>
+          </div>
+        </td>
+      </tr>
+    </table>
   </div>
 </div>
 
@@ -436,9 +448,11 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
 <!-- ══════════════════════════════ PAGE 2: EXECUTIVE DASHBOARD ══ -->
 <div class="page" style="background:#FFFFFF;min-height:297mm;">
   <div class="ph">
-    <span style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
-    <span style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Executive Dashboard &nbsp;·&nbsp; {date_str}</span>
-    <span style="font-size:9px;color:#475569;">2 / 4</span>
+    <table><tr>
+      <td style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</td>
+      <td align="center" style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Executive Dashboard &nbsp;·&nbsp; {date_str}</td>
+      <td align="right" style="font-size:9px;color:#475569;">2 / 4</td>
+    </tr></table>
   </div>
 
   <div style="padding:22px 52px;">
@@ -481,32 +495,38 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
     {worst_callout}
 
     <!-- TWO COLUMNS -->
-    <div style="display:flex;gap:14px;margin-bottom:14px;">
-      <div style="flex:1;background:#0A0F1E;border-radius:8px;padding:16px 18px;">
-        <div style="font-size:8px;color:#F59E0B;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;margin-bottom:10px;">Contesto aziendale</div>
-        <div style="font-size:10px;color:#94A3B8;margin-bottom:5px;"><span style="color:#CBD5E1;font-weight:600;">Settore:</span> {sector}</div>
-        <div style="font-size:10px;color:#94A3B8;margin-bottom:5px;"><span style="color:#CBD5E1;font-weight:600;">Dipendenti:</span> {employees}</div>
-        <div style="font-size:10px;color:#94A3B8;margin-bottom:5px;"><span style="color:#CBD5E1;font-weight:600;">Email/riunioni:</span> {time_on_email}</div>
-        <div style="font-size:10px;color:#94A3B8;margin-bottom:5px;"><span style="color:#CBD5E1;font-weight:600;">Processi doc.:</span> {proc_doc}</div>
-        <div style="font-size:10px;color:#94A3B8;"><span style="color:#CBD5E1;font-weight:600;">Uso AI:</span> {ai_usage}</div>
-      </div>
-      <div style="flex:1;background:#0A0F1E;border-radius:8px;padding:16px 18px;">
-        <div style="font-size:8px;color:#F59E0B;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;margin-bottom:10px;">Criticità dichiarate (scala 1–5)</div>
-        {pain_rows}
-      </div>
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;">
+      <tr>
+        <td width="49%" valign="top" style="background:#0A0F1E;border-radius:8px;padding:16px 18px;">
+          <div style="font-size:8px;color:#F59E0B;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;margin-bottom:10px;">Contesto aziendale</div>
+          <div style="font-size:10px;color:#94A3B8;margin-bottom:5px;"><span style="color:#CBD5E1;font-weight:600;">Settore:</span> {sector}</div>
+          <div style="font-size:10px;color:#94A3B8;margin-bottom:5px;"><span style="color:#CBD5E1;font-weight:600;">Dipendenti:</span> {employees}</div>
+          <div style="font-size:10px;color:#94A3B8;margin-bottom:5px;"><span style="color:#CBD5E1;font-weight:600;">Email/riunioni:</span> {time_on_email}</div>
+          <div style="font-size:10px;color:#94A3B8;margin-bottom:5px;"><span style="color:#CBD5E1;font-weight:600;">Processi doc.:</span> {proc_doc}</div>
+          <div style="font-size:10px;color:#94A3B8;"><span style="color:#CBD5E1;font-weight:600;">Uso AI:</span> {ai_usage}</div>
+        </td>
+        <td width="2%"></td>
+        <td width="49%" valign="top" style="background:#0A0F1E;border-radius:8px;padding:16px 18px;">
+          <div style="font-size:8px;color:#F59E0B;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;margin-bottom:10px;">Criticità dichiarate (scala 1–5)</div>
+          {pain_rows}
+        </td>
+      </tr>
+    </table>
 
     <!-- Processi + Obiettivi -->
-    <div style="display:flex;gap:14px;">
-      <div style="flex:1;padding:14px 16px;background:#F8FAFC;border-radius:8px;">
-        <div style="font-size:8px;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-bottom:8px;">Processi critici analizzati</div>
-        {procs_html}
-      </div>
-      <div style="flex:1;padding:14px 16px;background:#F8FAFC;border-radius:8px;">
-        <div style="font-size:8px;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-bottom:8px;">Obiettivi prioritari</div>
-        {obj_tags}
-      </div>
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td width="49%" valign="top" style="padding:14px 16px;background:#F8FAFC;border-radius:8px;">
+          <div style="font-size:8px;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-bottom:8px;">Processi critici analizzati</div>
+          {procs_html}
+        </td>
+        <td width="2%"></td>
+        <td width="49%" valign="top" style="padding:14px 16px;background:#F8FAFC;border-radius:8px;">
+          <div style="font-size:8px;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-bottom:8px;">Obiettivi prioritari</div>
+          {obj_tags}
+        </td>
+      </tr>
+    </table>
 
   </div>
 </div>
@@ -515,9 +535,11 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
 <!-- ════════════════════════════ PAGE 3: ANALISI DIMENSIONALE ══ -->
 <div class="page" style="background:#FFFFFF;min-height:297mm;">
   <div class="ph">
-    <span style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
-    <span style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Analisi Dimensionale &nbsp;·&nbsp; {date_str}</span>
-    <span style="font-size:9px;color:#475569;">3 / 4</span>
+    <table><tr>
+      <td style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</td>
+      <td align="center" style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Analisi Dimensionale &nbsp;·&nbsp; {date_str}</td>
+      <td align="right" style="font-size:9px;color:#475569;">3 / 4</td>
+    </tr></table>
   </div>
   <div style="padding:22px 52px;">
     <div style="margin-bottom:16px;">
@@ -534,9 +556,11 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
 <!-- ══════════════════════════════════ PAGE 4: QUICK WIN ══ -->
 <div class="page" style="background:#FFFFFF;min-height:297mm;">
   <div class="ph">
-    <span style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
-    <span style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Piano d'Azione AI &nbsp;·&nbsp; {date_str}</span>
-    <span style="font-size:9px;color:#475569;">4 / 4</span>
+    <table><tr>
+      <td style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</td>
+      <td align="center" style="font-size:9px;color:#475569;">{company.upper()} &nbsp;·&nbsp; Piano d'Azione AI &nbsp;·&nbsp; {date_str}</td>
+      <td align="right" style="font-size:9px;color:#475569;">4 / 4</td>
+    </tr></table>
   </div>
 
   <div style="padding:22px 52px;">
@@ -554,42 +578,49 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
 
     <!-- CTA FINALE -->
     <div style="margin-top:18px;background:#0A0F1E;border-radius:10px;padding:20px 24px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:20px;">
-        <div>
-          <div style="font-size:9px;color:#F59E0B;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;margin-bottom:6px;">
-            Il passo successivo
-          </div>
-          <div style="font-size:14px;font-weight:700;color:#FFFFFF;margin-bottom:4px;">
-            Implementa il Quick Win #1 entro 30 giorni.
-          </div>
-          <div style="font-size:11px;color:#94A3B8;line-height:1.6;">
-            Nei prossimi 5 giorni lavorativi ti contatteremo per una sessione
-            strategica gratuita di 45 minuti per definire il piano operativo.
-          </div>
-        </div>
-        <div style="background:#F59E0B;border-radius:8px;padding:12px 20px;text-align:center;flex-shrink:0;">
-          <div style="font-size:9px;font-weight:700;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;">Sessione</div>
-          <div style="font-size:13px;font-weight:900;color:#0A0F1E;">GRATUITA</div>
-          <div style="font-size:8px;color:#0A0F1E;opacity:0.7;">45 minuti</div>
-        </div>
-      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td valign="middle">
+            <div style="font-size:9px;color:#F59E0B;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;margin-bottom:6px;">
+              Il passo successivo
+            </div>
+            <div style="font-size:14px;font-weight:700;color:#FFFFFF;margin-bottom:4px;">
+              Implementa il Quick Win #1 entro 30 giorni.
+            </div>
+            <div style="font-size:11px;color:#94A3B8;line-height:1.6;">
+              Nei prossimi 5 giorni lavorativi ti contatteremo per una sessione
+              strategica gratuita di 45 minuti per definire il piano operativo.
+            </div>
+          </td>
+          <td width="120" valign="middle" align="right">
+            <div style="background:#F59E0B;border-radius:8px;padding:12px 20px;text-align:center;">
+              <div style="font-size:9px;font-weight:700;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;">Sessione</div>
+              <div style="font-size:13px;font-weight:900;color:#0A0F1E;">GRATUITA</div>
+              <div style="font-size:8px;color:#0A0F1E;">45 minuti</div>
+            </div>
+          </td>
+        </tr>
+      </table>
     </div>
 
     <!-- Certificate footer -->
-    <div style="margin-top:16px;padding-top:14px;border-top:1px solid #E2E8F0;
-                display:flex;justify-content:space-between;align-items:center;">
-      <div style="font-size:9px;color:#94A3B8;line-height:1.8;">
-        Certificato N° <strong style="color:#0A0F1E;">{cert_number}</strong> &nbsp;·&nbsp;
-        Generato il {date_str} &nbsp;·&nbsp; Benchmarks: {benchmark['source']}<br>
-        Documento riservato — rilasciato a {contact} ({company})
-      </div>
-      <div style="width:40px;height:40px;border:2px solid #E2E8F0;border-radius:50%;
-                  display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <div style="text-align:center;">
-          <div style="font-size:7px;font-weight:900;color:#F59E0B;letter-spacing:0.1em;">AI·PMI</div>
-          <div style="font-size:5px;color:#94A3B8;letter-spacing:0.1em;">CERT.</div>
-        </div>
-      </div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid #E2E8F0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td valign="middle" style="font-size:9px;color:#94A3B8;line-height:1.8;">
+            Certificato N° <strong style="color:#0A0F1E;">{cert_number}</strong> &nbsp;·&nbsp;
+            Generato il {date_str} &nbsp;·&nbsp; Benchmarks: {benchmark['source']}<br>
+            Documento riservato — rilasciato a {contact} ({company})
+          </td>
+          <td width="50" align="right" valign="middle">
+            <div style="width:40px;height:40px;border:2px solid #E2E8F0;border-radius:50%;
+                        display:inline-table;text-align:center;padding:10px 0 0;">
+              <div style="font-size:7px;font-weight:900;color:#F59E0B;letter-spacing:0.1em;">AI·PMI</div>
+              <div style="font-size:5px;color:#94A3B8;letter-spacing:0.1em;">CERT.</div>
+            </div>
+          </td>
+        </tr>
+      </table>
     </div>
   </div>
 </div>
