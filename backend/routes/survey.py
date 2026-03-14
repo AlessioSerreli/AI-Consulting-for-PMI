@@ -91,10 +91,10 @@ async def send_confirmation_email(survey_data: dict):
 async def generate_scorecard_async(lead_id: str, survey_data: dict):
     try:
         from ai.scoring import generate_scorecard
-        from pdf.generator import generate_pdf
+        from pdf.certificate import generate_certificate_pdf
         import resend
         scorecard = await generate_scorecard(survey_data)
-        pdf_bytes = generate_pdf(scorecard, survey_data)
+        pdf_bytes = generate_certificate_pdf(scorecard, survey_data)
 
         supabase = get_supabase()
         supabase.table("leads").update({

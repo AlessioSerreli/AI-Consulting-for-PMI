@@ -3,18 +3,22 @@ import json
 import os
 import re
 from ai.prompts import SCORECARD_SYSTEM_PROMPT, SCORECARD_USER_TEMPLATE
+from data.benchmarks import get_benchmark
 
 async def generate_scorecard(survey_data: dict) -> dict:
     client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     def join_list(val):
         if isinstance(val, list):
-            return ", ".join(val)
+            return ", ".join(str(v) for v in val)
         return str(val) if val else "N/A"
+
+    sector = survey_data.get("sector", "Altro")
+    bench = get_benchmark(sector)
 
     user_message = SCORECARD_USER_TEMPLATE.format(
         company_name=survey_data.get("company_name", "N/A"),
-        sector=survey_data.get("sector", "N/A"),
+        sector=sector,
         employees=survey_data.get("employees", "N/A"),
         critical_processes=join_list(survey_data.get("critical_processes") or survey_data.get("main_processes")),
         tools=join_list(survey_data.get("tools") or survey_data.get("current_tools")),
@@ -30,6 +34,13 @@ async def generate_scorecard(survey_data: dict) -> dict:
         ai_concerns=join_list(survey_data.get("ai_concerns")),
         objectives=join_list(survey_data.get("objectives") or survey_data.get("main_goal")),
         free_notes=survey_data.get("free_notes", "N/A"),
+        bench_efficienza=bench["efficienza_operativa"],
+        bench_digital=bench["digitalizzazione"],
+        bench_dati=bench["gestione_dati"],
+        bench_comunicazione=bench["comunicazione_interna"],
+        bench_velocita=bench["velocita_decisionale"],
+        bench_overall=bench["overall"],
+        bench_source=bench["source"],
     )
 
     message = await client.messages.create(

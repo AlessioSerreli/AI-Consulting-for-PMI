@@ -19,29 +19,44 @@ Infine:
 
 Rispondi SEMPRE in formato JSON valido."""
 
-SCORECARD_USER_TEMPLATE = """Analizza questa PMI italiana e genera la scorecard:
+SCORECARD_USER_TEMPLATE = """Analizza questa PMI italiana e genera la scorecard.
 
+══ DATI AZIENDALI ══
 Azienda: {company_name}
 Settore: {sector}
 Dipendenti: {employees}
 
-Processi aziendali (in ordine di criticità): {critical_processes}
+══ OPERATIVITÀ ══
+Processi aziendali (in ordine di criticità dichiarata): {critical_processes}
 Strumenti digitali usati: {tools}
 Tempo giornaliero in email/riunioni: {time_on_email}
 Processi documentati: {processes_documented}
 
-Criticità (scala 1-5):
-- Email e riunioni: {pain_email}
-- Difficoltà a delegare: {pain_delegare}
-- Decisioni senza dati: {pain_dati}
-- Errori per mancanza procedure: {pain_errori}
-- Attività manuali ripetitive: {pain_tempo}
-- Monitorare le performance: {pain_monitor}
+══ CRITICITÀ (scala 1–5, dove 5 = massimo dolore) ══
+- Email e riunioni: {pain_email}/5
+- Difficoltà a delegare: {pain_delegare}/5
+- Decisioni senza dati: {pain_dati}/5
+- Errori per mancanza procedure: {pain_errori}/5
+- Attività manuali ripetitive: {pain_tempo}/5
+- Monitorare le performance: {pain_monitor}/5
 
+══ AI E OBIETTIVI ══
 Utilizzo attuale AI: {ai_usage}
 Preoccupazioni sull'AI: {ai_concerns}
-Obiettivi principali: {objectives}
+Obiettivi prioritari: {objectives}
 Note aggiuntive: {free_notes}
+
+══ BENCHMARK SETTORIALE (media PMI italiane — {sector}) ══
+Efficienza Operativa media: {bench_efficienza}/100
+Digitalizzazione media: {bench_digital}/100
+Gestione Dati media: {bench_dati}/100
+Comunicazione Interna media: {bench_comunicazione}/100
+Velocità Decisionale media: {bench_velocita}/100
+Punteggio complessivo medio settore: {bench_overall}/100
+(Fonte: {bench_source})
+
+Usa questi benchmark per calibrare i punteggi e nella narrativa di ogni dimensione
+cita esplicitamente il posizionamento rispetto ai peer (es. "superiore/inferiore alla media del settore").
 
 Genera la scorecard in questo formato JSON:
 {{
