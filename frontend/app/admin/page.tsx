@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Brain, Users, TrendingUp, Calendar, ArrowRight, AlertCircle } from 'lucide-react'
+import { Brain, Users, TrendingUp, Calendar, ArrowRight, AlertCircle, Target } from 'lucide-react'
 
 interface Stats {
   total_leads: number
@@ -52,6 +52,7 @@ export default function AdminDashboard() {
             { href: '/admin', label: 'Dashboard', icon: TrendingUp },
             { href: '/admin/leads', label: 'Pipeline Lead', icon: Users },
             { href: '/admin/clients', label: 'Clienti Attivi', icon: Brain },
+            { href: '/admin/prospecting', label: 'Prospecting', icon: Target },
           ].map((item) => (
             <Link
               key={item.href}
