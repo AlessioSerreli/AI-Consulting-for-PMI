@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    page-break-after: always;
+    overflow: hidden;
+    position: relative;
+  }
+  .page:last-child { page-break-after: auto; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- PAGINA 1 — COPERTINA                                          -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page" style="background:#0A0F1E;color:#F8FAFC;padding:52px 56px;
+     display:flex;flex-direction:column;min-height:297mm;">
+
+  <!-- TOP BAR -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:44px;">
+    <span style="font-size:13px;letter-spacing:0.28em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
+    <div style="text-align:right;">
+      <div style="font-size:9px;color:#475569;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:3px;">N° Certificato</div>
+      <div style="font-size:10px;color:#94A3B8;font-family:Courier New,monospace;font-weight:600;">CEF-202603-8E7320DF</div>
+    </div>
+  </div>
+
+  <!-- TITLE -->
+  <div style="border-top:1px solid rgba(245,158,11,0.3);padding-top:32px;margin-bottom:32px;">
+    <div style="font-size:9px;letter-spacing:0.22em;color:#475569;text-transform:uppercase;margin-bottom:14px;">
+      Documento di analisi riservato
+    </div>
+    <div style="font-size:40px;font-weight:900;color:#FFFFFF;line-height:1.05;
+                text-transform:uppercase;letter-spacing:-0.01em;">
+      CERTIFICATO DI<br>EFFICIENZA<br><span style="color:#F59E0B;">OPERATIVA</span>
+    </div>
+  </div>
+
+  <!-- COMPANY BOX -->
+  <div style="border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:22px 26px;
+              margin-bottom:32px;background:rgba(255,255,255,0.03);">
+    <div style="font-size:9px;letter-spacing:0.22em;color:#475569;text-transform:uppercase;margin-bottom:10px;">
+      Rilasciato a
+    </div>
+    <div style="font-size:26px;font-weight:900;color:#FFFFFF;text-transform:uppercase;
+                letter-spacing:-0.01em;margin-bottom:7px;">Rossi Srl</div>
+    <div style="font-size:12px;color:#64748B;">
+      Manifatturiero / Produzione&nbsp;&nbsp;·&nbsp;&nbsp;16-50 dipendenti&nbsp;&nbsp;·&nbsp;&nbsp;Italia
+    </div>
+  </div>
+
+  <!-- SCORE + LEVEL -->
+  <div style="display:flex;gap:22px;align-items:flex-start;margin-bottom:32px;">
+    <div style="background:#F97316;border-radius:10px;padding:18px 24px;
+                min-width:130px;text-align:center;flex-shrink:0;">
+      <div style="font-size:54px;font-weight:900;color:#0A0F1E;line-height:1;">32</div>
+      <div style="font-size:13px;color:rgba(10,15,30,0.65);font-weight:600;">/100</div>
+    </div>
+    <div style="padding-top:6px;">
+      <div style="font-size:16px;font-weight:800;color:#FFFFFF;text-transform:uppercase;
+                  letter-spacing:0.04em;margin-bottom:10px;">EFFICIENZA IN SVILUPPO</div>
+      <div style="display:inline-block;background:rgba(245,158,11,0.12);
+                  border:1px solid rgba(245,158,11,0.35);border-radius:20px;
+                  padding:4px 14px;font-size:11px;color:#F59E0B;font-weight:700;
+                  margin-bottom:12px;">Percentile 16° del settore</div>
+      <div style="font-size:10px;color:#475569;line-height:1.6;">
+        Confronto con PMI manifatturiere italiane<br>
+        Fonte: Istat ICT 2023 · Confindustria Digitale
+      </div>
+    </div>
+  </div>
+
+  <!-- EXECUTIVE SUMMARY QUOTE -->
+  <div style="border-left:3px solid #F59E0B;padding-left:18px;margin-bottom:auto;">
+    <div style="font-size:13px;color:#CBD5E1;line-height:1.8;font-style:italic;">
+      &ldquo;Rossi Srl presenta un punteggio complessivo di 32/100, significativamente al di sotto della media delle PMI manifatturiere italiane (45/100), con le criticità più acute nella gestione dei dati (18/100) e nella velocità decisionale (20/100). L'azienda opera con strumenti digitali minimi e processi parzialmente documentati, il che genera dipendenza dal titolare, variabilità operativa e incapacità di scalare senza assumere — esattamente l'opposto degli obiettivi dichiarati. La buona notizia è che il gap rispetto ai benchmark di settore è colmabile in 6-12 mesi con interventi mirati e a basso costo, partendo dalla standardizzazione dei processi e dall'adozione di un cruscotto dati elementare. I tre Quick Win identificati possono generare un impatto misurabile già entro 30 giorni, creando le fondamenta per una trasformazione digitale sostenibile e graduale.&rdquo;
+    </div>
+  </div>
+
+  <!-- SIGNATURE -->
+  <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:22px;margin-top:32px;
+              display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#FFFFFF;margin-bottom:2px;">Luigi Negro</div>
+      <div style="font-size:10px;color:#475569;margin-bottom:2px;">AI Expert &amp; Partner · AI.PMI Italia</div>
+      <div style="font-size:10px;color:#475569;">14/03/2026</div>
+    </div>
+    <div style="width:58px;height:58px;border:2px solid rgba(245,158,11,0.4);border-radius:50%;
+                display:flex;align-items:center;justify-content:center;">
+      <div style="text-align:center;">
+        <div style="font-size:9px;font-weight:900;color:#F59E0B;letter-spacing:0.12em;">AI·PMI</div>
+        <div style="font-size:6px;color:#475569;letter-spacing:0.12em;">CERT.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- PAGINA 2 — ANALISI DIMENSIONALE                               -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page" style="background:#FFFFFF;min-height:297mm;">
+
+  <!-- PAGE HEADER -->
+  <div style="background:#0A0F1E;padding:16px 56px;display:flex;
+              justify-content:space-between;align-items:center;">
+    <span style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
+    <span style="font-size:9px;color:#475569;">ROSSI SRL &nbsp;·&nbsp; Analisi Dimensionale &nbsp;·&nbsp; 14/03/2026</span>
+    <span style="font-size:9px;color:#475569;">2 / 3</span>
+  </div>
+
+  <div style="padding:30px 56px;">
+
+    <!-- Section title -->
+    <div style="margin-bottom:26px;">
+      <div style="font-size:8px;letter-spacing:0.22em;color:#94A3B8;text-transform:uppercase;margin-bottom:6px;">
+        Analisi dettagliata per dimensione
+      </div>
+      <div style="font-size:20px;font-weight:900;color:#0A0F1E;text-transform:uppercase;letter-spacing:-0.01em;">
+        ANALISI <span style="color:#F59E0B;">DIMENSIONALE</span>
+      </div>
+    </div>
+
+    
+    <div style="margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid #E2E8F0;">
+      <div style="overflow:hidden;margin-bottom:12px;">
+        <span style="font-size:12px;font-weight:700;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.06em;">Efficienza Operativa</span>
+        <span style="float:right;font-size:10px;color:#EF4444;font-weight:700;
+               background:#FEF2F2;padding:2px 8px;border-radius:12px;">-14 vs media settore</span>
+      </div>
+      
+        <div style="overflow:hidden;margin-bottom:5px;">
+          <span style="font-size:12px;color:#1E293B;font-weight:600;">La tua azienda</span>
+          <span style="float:right;font-size:13px;color:#0A0F1E;font-weight:700;">38/100</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:4px;height:10px;margin-bottom:10px;">
+          <div style="background:#F97316;height:10px;border-radius:4px;width:38%;"></div>
+        </div>
+      
+        <div style="overflow:hidden;margin-bottom:4px;">
+          <span style="font-size:11px;color:#94A3B8;">Media settore (PMI manifatturiere italiane)</span>
+          <span style="float:right;font-size:11px;color:#94A3B8;">52/100</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:4px;height:5px;margin-bottom:20px;">
+          <div style="background:#CBD5E1;height:5px;border-radius:4px;width:52%;"></div>
+        </div>
+      <p style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:6px;">Rossi Srl mostra un livello di efficienza operativa inferiore alla media del settore manifatturiero italiano (52/100), con processi solo parzialmente documentati e una variabilità nei tempi di consegna che segnala instabilità nelle operations. La criticità elevata su errori da mancanza di procedure (4/5) e attività manuali ripetitive (5/5) indica che i processi core — produzione, gestione ordini e logistica — dipendono eccessivamente dal know-how individuale piuttosto che da flussi standardizzati. Questo espone l'azienda a rischi operativi concreti e limita la scalabilità.</p>
+      <p style="font-size:11px;color:#F59E0B;font-weight:600;">▸ Documentare e standardizzare almeno i 3 processi produttivi più critici con checklist operative, riducendo la variabilità nei tempi di consegna attraverso SOP (Standard Operating Procedure) scritte e condivise.</p>
+    </div>
+    <div style="margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid #E2E8F0;">
+      <div style="overflow:hidden;margin-bottom:12px;">
+        <span style="font-size:12px;font-weight:700;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.06em;">Digitalizzazione</span>
+        <span style="float:right;font-size:10px;color:#EF4444;font-weight:700;
+               background:#FEF2F2;padding:2px 8px;border-radius:12px;">-21 vs media settore</span>
+      </div>
+      
+        <div style="overflow:hidden;margin-bottom:5px;">
+          <span style="font-size:12px;color:#1E293B;font-weight:600;">La tua azienda</span>
+          <span style="float:right;font-size:13px;color:#0A0F1E;font-weight:700;">22/100</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:4px;height:10px;margin-bottom:10px;">
+          <div style="background:#EF4444;height:10px;border-radius:4px;width:22%;"></div>
+        </div>
+      
+        <div style="overflow:hidden;margin-bottom:4px;">
+          <span style="font-size:11px;color:#94A3B8;">Media settore (PMI manifatturiere italiane)</span>
+          <span style="float:right;font-size:11px;color:#94A3B8;">43/100</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:4px;height:5px;margin-bottom:20px;">
+          <div style="background:#CBD5E1;height:5px;border-radius:4px;width:43%;"></div>
+        </div>
+      <p style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:6px;">Con un utilizzo limitato a email, WhatsApp ed Excel, Rossi Srl si posiziona significativamente al di sotto della media del settore (43/100), operando di fatto in un contesto quasi interamente analogico. L'assenza di qualsiasi strumento gestionale strutturato (ERP, CRM, WMS) per un'azienda manifatturiera con 16-50 dipendenti rappresenta un gap competitivo rilevante rispetto ai peer. Il fatto che l'AI non sia mai stata considerata evidenzia una maturità digitale ancora alle fasi iniziali, con ampi margini di recupero rapido.</p>
+      <p style="font-size:11px;color:#F59E0B;font-weight:600;">▸ Adottare un software gestionale cloud entry-level (es. Danea/Fatture in Cloud con modulo magazzino, o Odoo Community) per centralizzare ordini, magazzino e fatturazione, eliminando la frammentazione su Excel e WhatsApp.</p>
+    </div>
+    <div style="margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid #E2E8F0;">
+      <div style="overflow:hidden;margin-bottom:12px;">
+        <span style="font-size:12px;font-weight:700;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.06em;">Gestione Dati</span>
+        <span style="float:right;font-size:10px;color:#EF4444;font-weight:700;
+               background:#FEF2F2;padding:2px 8px;border-radius:12px;">-22 vs media settore</span>
+      </div>
+      
+        <div style="overflow:hidden;margin-bottom:5px;">
+          <span style="font-size:12px;color:#1E293B;font-weight:600;">La tua azienda</span>
+          <span style="float:right;font-size:13px;color:#0A0F1E;font-weight:700;">18/100</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:4px;height:10px;margin-bottom:10px;">
+          <div style="background:#EF4444;height:10px;border-radius:4px;width:18%;"></div>
+        </div>
+      
+        <div style="overflow:hidden;margin-bottom:4px;">
+          <span style="font-size:11px;color:#94A3B8;">Media settore (PMI manifatturiere italiane)</span>
+          <span style="float:right;font-size:11px;color:#94A3B8;">40/100</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:4px;height:5px;margin-bottom:20px;">
+          <div style="background:#CBD5E1;height:5px;border-radius:4px;width:40%;"></div>
+        </div>
+      <p style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:6px;">Il punteggio di Rossi Srl sulla gestione dati è il più critico dell'intera scorecard e nettamente inferiore alla media di settore (40/100): la criticità 'decisioni senza dati' al massimo livello (5/5) conferma che le scelte strategiche e operative vengono prese in assenza di metriche strutturate. Senza un sistema di raccolta dati su produzione, magazzino e performance clienti, è impossibile identificare le cause della variabilità nelle consegne o ottimizzare i costi. L'azienda sta di fatto navigando senza strumenti di misura.</p>
+      <p style="font-size:11px;color:#F59E0B;font-weight:600;">▸ Creare immediatamente un cruscotto settimanale minimo in Google Sheets con 5 KPI essenziali: lead time medio per ordine, tasso di consegna puntuale, giacenze critiche a magazzino, ordini evasi e ricavi per cliente top-10.</p>
+    </div>
+    <div style="margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid #E2E8F0;">
+      <div style="overflow:hidden;margin-bottom:12px;">
+        <span style="font-size:12px;font-weight:700;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.06em;">Comunicazione Interna</span>
+        <span style="float:right;font-size:10px;color:#EF4444;font-weight:700;
+               background:#FEF2F2;padding:2px 8px;border-radius:12px;">-5 vs media settore</span>
+      </div>
+      
+        <div style="overflow:hidden;margin-bottom:5px;">
+          <span style="font-size:12px;color:#1E293B;font-weight:600;">La tua azienda</span>
+          <span style="float:right;font-size:13px;color:#0A0F1E;font-weight:700;">42/100</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:4px;height:10px;margin-bottom:10px;">
+          <div style="background:#F97316;height:10px;border-radius:4px;width:42%;"></div>
+        </div>
+      
+        <div style="overflow:hidden;margin-bottom:4px;">
+          <span style="font-size:11px;color:#94A3B8;">Media settore (PMI manifatturiere italiane)</span>
+          <span style="float:right;font-size:11px;color:#94A3B8;">47/100</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:4px;height:5px;margin-bottom:20px;">
+          <div style="background:#CBD5E1;height:5px;border-radius:4px;width:47%;"></div>
+        </div>
+      <p style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:6px;">La comunicazione interna di Rossi Srl si posiziona leggermente sotto la media del settore (47/100): l'utilizzo di WhatsApp come canale principale, pur garantendo reattività, genera dispersione delle informazioni e rende difficile la tracciabilità delle decisioni operative. La difficoltà a delegare (4/5) è spesso un sintomo diretto di comunicazione non strutturata, dove il titolare rimane nodo centrale di tutti i flussi informativi. Il tempo di 3h/giorno in email e riunioni è significativo ma non ancora patologico, suggerendo spazi di recupero con una migliore organizzazione dei canali.</p>
+      <p style="font-size:11px;color:#F59E0B;font-weight:600;">▸ Separare la comunicazione operativa da quella informale adottando uno strumento dedicato come Slack o Microsoft Teams con canali tematici (produzione, ordini, logistica), riducendo il ricorso a WhatsApp per le comunicazioni di lavoro.</p>
+    </div>
+    <div style="margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid #E2E8F0;">
+      <div style="overflow:hidden;margin-bottom:12px;">
+        <span style="font-size:12px;font-weight:700;color:#0A0F1E;text-transform:uppercase;letter-spacing:0.06em;">Velocità Decisionale</span>
+        <span style="float:right;font-size:10px;color:#EF4444;font-weight:700;
+               background:#FEF2F2;padding:2px 8px;border-radius:12px;">-24 vs media settore</span>
+      </div>
+      
+        <div style="overflow:hidden;margin-bottom:5px;">
+          <span style="font-size:12px;color:#1E293B;font-weight:600;">La tua azienda</span>
+          <span style="float:right;font-size:13px;color:#0A0F1E;font-weight:700;">20/100</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:4px;height:10px;margin-bottom:10px;">
+          <div style="background:#EF4444;height:10px;border-radius:4px;width:20%;"></div>
+        </div>
+      
+        <div style="overflow:hidden;margin-bottom:4px;">
+          <span style="font-size:11px;color:#94A3B8;">Media settore (PMI manifatturiere italiane)</span>
+          <span style="float:right;font-size:11px;color:#94A3B8;">44/100</span>
+        </div>
+        <div style="background:#E2E8F0;border-radius:4px;height:5px;margin-bottom:20px;">
+          <div style="background:#CBD5E1;height:5px;border-radius:4px;width:44%;"></div>
+        </div>
+      <p style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:6px;">Rossi Srl si colloca ben al di sotto della media settoriale (44/100) sulla velocità decisionale, con il punteggio più penalizzato dalla combinazione letale di assenza di dati strutturati (5/5) e difficoltà a delegare (4/5): ogni decisione richiede raccolta manuale di informazioni e tende a concentrarsi su una o poche figure. La variabilità nei tempi di consegna citata nelle note è probabilmente aggravata da questo collo di bottiglia decisionale, dove l'impossibilità di delegare rallenta le risposte operative in tempo reale. Senza dati accessibili e processi delegabili, la velocità decisionale resterà strutturalmente compressa.</p>
+      <p style="font-size:11px;color:#F59E0B;font-weight:600;">▸ Definire una matrice di delega operativa (RACI semplificata) per le decisioni ricorrenti — es. gestione scorte, conferma ordini urgenti, priorità di produzione — con soglie chiare entro cui i responsabili possono agire autonomamente senza escalation.</p>
+    </div>
+
+    <!-- POSITIONING BAR -->
+    <div style="background:#F8FAFC;border-radius:10px;padding:20px 22px;margin-top:8px;">
+      <div style="font-size:9px;font-weight:700;color:#0A0F1E;text-transform:uppercase;
+                  letter-spacing:0.12em;margin-bottom:14px;">
+        Posizionamento Competitivo Complessivo
+      </div>
+      <!-- Track -->
+      <div style="position:relative;height:16px;background:#E2E8F0;border-radius:8px;margin-bottom:8px;">
+        <!-- Your bar -->
+        <div style="position:absolute;left:0;top:0;height:100%;width:32%;
+                    background:#F59E0B;border-radius:8px;"></div>
+        <!-- Sector avg marker -->
+        <div style="position:absolute;left:45%;top:-4px;height:24px;
+                    width:2px;background:#0A0F1E;border-radius:1px;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:8px;
+                  color:#94A3B8;margin-bottom:12px;">
+        <span>0</span><span>25</span><span>50</span><span>75</span><span>100</span>
+      </div>
+      <div style="font-size:12px;color:#374151;">
+        Punteggio: <strong style="color:#F59E0B;">32/100</strong>
+        &nbsp;·&nbsp;
+        Media settore: <strong style="color:#0A0F1E;">45/100</strong>
+        &nbsp;·&nbsp;
+        Posizionamento: <strong style="color:#F97316;">Percentile 16° del settore</strong>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- PAGINA 3 — QUICK WIN + PERSONALIZZAZIONE                      -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page" style="background:#FFFFFF;min-height:297mm;">
+
+  <!-- PAGE HEADER -->
+  <div style="background:#0A0F1E;padding:16px 56px;display:flex;
+              justify-content:space-between;align-items:center;">
+    <span style="font-size:10px;letter-spacing:0.22em;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</span>
+    <span style="font-size:9px;color:#475569;">ROSSI SRL &nbsp;·&nbsp; Piano d'Azione &nbsp;·&nbsp; 14/03/2026</span>
+    <span style="font-size:9px;color:#475569;">3 / 3</span>
+  </div>
+
+  <div style="padding:30px 56px;">
+
+    <!-- Section title -->
+    <div style="margin-bottom:24px;">
+      <div style="font-size:8px;letter-spacing:0.22em;color:#94A3B8;text-transform:uppercase;margin-bottom:6px;">
+        Raccomandazioni prioritarie
+      </div>
+      <div style="font-size:20px;font-weight:900;color:#0A0F1E;text-transform:uppercase;letter-spacing:-0.01em;">
+        3 QUICK WIN <span style="color:#F59E0B;">IMPLEMENTABILI SUBITO</span>
+      </div>
+    </div>
+
+    
+        <div style="display:flex;gap:20px;margin-bottom:20px;padding:20px 22px;
+                    background:#F8FAFC;border-left:4px solid #F59E0B;border-radius:0 10px 10px 0;">
+          <div style="font-size:30px;font-weight:900;color:#F59E0B;min-width:36px;
+                      line-height:1;font-family:Arial Black,Arial,sans-serif;">01</div>
+          <div style="font-size:13px;color:#1E293B;line-height:1.7;">🗂️ STANDARD PROCEDURE IN 2 SETTIMANE: Mappare e documentare il processo di gestione ordini (dalla ricezione alla consegna) con un diagramma di flusso semplice e una checklist operativa condivisa su Google Drive — costo zero, impatto immediato sulla variabilità delle consegne e sulla capacità di delegare.</div>
+        </div>
+        <div style="display:flex;gap:20px;margin-bottom:20px;padding:20px 22px;
+                    background:#F8FAFC;border-left:4px solid #F59E0B;border-radius:0 10px 10px 0;">
+          <div style="font-size:30px;font-weight:900;color:#F59E0B;min-width:36px;
+                      line-height:1;font-family:Arial Black,Arial,sans-serif;">02</div>
+          <div style="font-size:13px;color:#1E293B;line-height:1.7;">📊 CRUSCOTTO KPI SETTIMANALE: Costruire entro 7 giorni un foglio Google Sheets aggiornato ogni lunedì con 5 metriche chiave (ordini in lavorazione, consegne puntuali %, giacenze sotto soglia, fatturato settimana, ore produzione per ordine) — permette di prendere decisioni basate su dati reali già dal primo mese.</div>
+        </div>
+        <div style="display:flex;gap:20px;margin-bottom:20px;padding:20px 22px;
+                    background:#F8FAFC;border-left:4px solid #F59E0B;border-radius:0 10px 10px 0;">
+          <div style="font-size:30px;font-weight:900;color:#F59E0B;min-width:36px;
+                      line-height:1;font-family:Arial Black,Arial,sans-serif;">03</div>
+          <div style="font-size:13px;color:#1E293B;line-height:1.7;">🤖 PRIMO ESPERIMENTO AI PER RISPARMIARE TEMPO: Utilizzare ChatGPT o uno strumento AI gratuito per automatizzare la redazione di email standard ai clienti (conferme ordine, avvisi ritardo, richieste feedback) e per generare report sintetici dalle tabelle Excel esistenti — implementabile in 3 giorni, con risparmio stimato di 30-45 minuti al giorno sulla comunicazione routinaria.</div>
+        </div>
+
+    <!-- PERSONALIZATION BOX -->
+    <div style="background:#0A0F1E;border-radius:10px;padding:24px 26px;margin-top:24px;">
+      <div style="font-size:8px;letter-spacing:0.2em;color:#F59E0B;text-transform:uppercase;
+                  font-weight:700;margin-bottom:18px;">
+        Questa analisi è stata costruita specificamente per Rossi Srl
+      </div>
+
+      <div style="display:flex;gap:28px;margin-bottom:18px;">
+        <div style="flex:1;">
+          <div style="font-size:9px;color:#475569;text-transform:uppercase;
+                      letter-spacing:0.12em;margin-bottom:10px;">
+            Processi critici analizzati
+          </div>
+          <div><span style="display:inline-block;background:#F59E0B;color:#0A0F1E;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;margin:3px 4px 3px 0;">1° Produzione e operations</span><span style="display:inline-block;background:#F59E0B;color:#0A0F1E;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;margin:3px 4px 3px 0;">2° Gestione ordini e clienti</span><span style="display:inline-block;background:#F59E0B;color:#0A0F1E;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;margin:3px 4px 3px 0;">3° Logistica e magazzino</span></div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:9px;color:#475569;text-transform:uppercase;
+                      letter-spacing:0.12em;margin-bottom:10px;">
+            Obiettivi dichiarati
+          </div>
+          <div style="font-size:11px;color:#CBD5E1;line-height:1.7;"><strong style="color:#CBD5E1;">Risparmiare tempo</strong> · <strong style="color:#CBD5E1;">Ridurre i costi</strong> · <strong style="color:#CBD5E1;">Crescere senza assumere</strong></div>
+        </div>
+      </div>
+
+      
+      <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:16px;">
+        <div style="font-size:9px;color:#475569;text-transform:uppercase;
+                    letter-spacing:0.12em;margin-bottom:10px;">Pain points principali (scala 1–5)</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="font-size:11px;color:#94A3B8;">Decisioni senza dati</span><span style="color:#F59E0B;letter-spacing:3px;font-size:10px;">●●●●●</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="font-size:11px;color:#94A3B8;">Attività manuali</span><span style="color:#F59E0B;letter-spacing:3px;font-size:10px;">●●●●●</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="font-size:11px;color:#94A3B8;">Difficoltà a delegare</span><span style="color:#F59E0B;letter-spacing:3px;font-size:10px;">●●●●○</span></div>
+      </div>
+    </div>
+
+    <!-- CERTIFICATE FOOTER -->
+    <div style="margin-top:24px;padding-top:18px;border-top:1px solid #E2E8F0;
+                display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:9px;color:#94A3B8;line-height:1.8;">
+        Certificato N° <strong style="color:#0A0F1E;">CEF-202603-8E7320DF</strong><br>
+        Generato il 14/03/2026 &nbsp;·&nbsp; Benchmarks: Istat ICT 2023 · Confindustria Digitale<br>
+        Documento riservato — rilasciato esclusivamente a Marco Rossi (Rossi Srl)
+      </div>
+      <div style="width:48px;height:48px;border:2px solid #E2E8F0;border-radius:50%;
+                  display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <div style="text-align:center;">
+          <div style="font-size:7px;font-weight:900;color:#F59E0B;letter-spacing:0.12em;">AI·PMI</div>
+          <div style="font-size:5px;color:#94A3B8;letter-spacing:0.12em;">CERT.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -45,7 +45,7 @@ async def generate_scorecard(survey_data: dict) -> dict:
 
     message = await client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=2000,
+        max_tokens=4096,
         system=SCORECARD_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}],
     )
