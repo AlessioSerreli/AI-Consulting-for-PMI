@@ -7,7 +7,7 @@ from supabase import create_client
 
 router = APIRouter(prefix="/prospecting")
 
-APIFY_ACTOR = "apify~google-maps-scraper"
+APIFY_ACTOR = "nwua9Gu5YrADL7ZDj"
 APIFY_BASE = "https://api.apify.com/v2"
 
 
