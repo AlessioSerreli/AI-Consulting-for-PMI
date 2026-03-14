@@ -39,10 +39,27 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   dismissed: { label: 'Scartato',   color: 'bg-slate-500/10 text-slate-500' },
 }
 
+const EMPLOYEES_OPTIONS = [
+  { value: '',         label: 'Qualsiasi dimensione' },
+  { value: 'micro',    label: 'Micro (1–9 dip.)' },
+  { value: 'piccola',  label: 'Piccola (10–49 dip.)' },
+  { value: 'media',    label: 'Media (50–249 dip.)' },
+]
+
+const REVENUE_OPTIONS = [
+  { value: '',       label: 'Qualsiasi fatturato' },
+  { value: '<500k',  label: '< €500k' },
+  { value: '500k2m', label: '€500k – €2M' },
+  { value: '2m10m',  label: '€2M – €10M' },
+  { value: '>10m',   label: '> €10M' },
+]
+
 export default function ProspectingPage() {
   const [query, setQuery] = useState('')
   const [city, setCity] = useState('')
   const [maxResults, setMaxResults] = useState(20)
+  const [employees, setEmployees] = useState('')
+  const [revenue, setRevenue] = useState('')
   const [runStatus, setRunStatus] = useState<RunStatus>('idle')
   const [runId, setRunId] = useState<string | null>(null)
   const [searchLabel, setSearchLabel] = useState('')
@@ -67,12 +84,15 @@ export default function ProspectingPage() {
     setError(null)
     setRunStatus('running')
     setNewResults([])
-    setSearchLabel(`${query} · ${city}`)
+    const empLabel = EMPLOYEES_OPTIONS.find(o => o.value === employees)?.label ?? ''
+    const revLabel = REVENUE_OPTIONS.find(o => o.value === revenue)?.label ?? ''
+    const filters = [empLabel, revLabel].filter(l => l && !l.startsWith('Qualsiasi')).join(' · ')
+    setSearchLabel(`${query} · ${city}${filters ? ` · ${filters}` : ''}`)
 
     const res = await fetch(`${API_URL}/prospecting/run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: query.trim(), city: city.trim(), max_results: maxResults }),
+      body: JSON.stringify({ query: query.trim(), city: city.trim(), max_results: maxResults, employees: employees || null, revenue: revenue || null }),
     }).catch(() => null)
 
     if (!res?.ok) {
@@ -174,7 +194,7 @@ export default function ProspectingPage() {
             <Search className="w-4 h-4 text-electric-400" />
             Nuova ricerca
           </h2>
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-3 gap-4 mb-3">
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Settore / categoria</label>
               <input
@@ -205,6 +225,28 @@ export default function ProspectingPage() {
                 <option value={10}>10</option>
                 <option value={20}>20</option>
                 <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Dimensione azienda</label>
+              <select
+                value={employees}
+                onChange={e => setEmployees(e.target.value)}
+                className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-electric-500"
+              >
+                {EMPLOYEES_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Fascia di fatturato</label>
+              <select
+                value={revenue}
+                onChange={e => setRevenue(e.target.value)}
+                className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-electric-500"
+              >
+                {REVENUE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
           </div>

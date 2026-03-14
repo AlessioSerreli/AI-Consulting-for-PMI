@@ -26,10 +26,26 @@ def get_apify_token():
     return token
 
 
+EMPLOYEES_KEYWORDS = {
+    "micro":   "micro impresa",
+    "piccola": "piccola impresa",
+    "media":   "media impresa",
+}
+
+REVENUE_LABELS = {
+    "<500k":   "fatturato sotto 500k",
+    "500k2m":  "fatturato 500k-2M",
+    "2m10m":   "fatturato 2M-10M",
+    ">10m":    "fatturato oltre 10M",
+}
+
+
 class SearchRequest(BaseModel):
-    query: str           # es. "officina meccanica"
-    city: str            # es. "Milano"
+    query: str                        # es. "officina meccanica"
+    city: str                         # es. "Milano"
     max_results: int = 20
+    employees: Optional[str] = None   # micro | piccola | media
+    revenue: Optional[str] = None     # <500k | 500k2m | 2m10m | >10m
 
 
 class LeadStatusUpdate(BaseModel):
@@ -40,7 +56,16 @@ class LeadStatusUpdate(BaseModel):
 @router.post("/run")
 async def start_scraping(request: SearchRequest):
     token = get_apify_token()
-    search_string = f"{request.query} {request.city}"
+
+    # Arricchisce la query con la dimensione aziendale se specificata
+    parts = [request.query]
+    if request.employees and request.employees in EMPLOYEES_KEYWORDS:
+        parts.append(EMPLOYEES_KEYWORDS[request.employees])
+    search_string = f"{' '.join(parts)} {request.city}"
+
+    # Etichetta leggibile per i log / risposta
+    revenue_label = REVENUE_LABELS.get(request.revenue or "", "")
+    search_label = search_string + (f" | fatturato: {revenue_label}" if revenue_label else "")
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
@@ -57,7 +82,7 @@ async def start_scraping(request: SearchRequest):
             raise HTTPException(500, f"Errore Apify: {resp.text}")
 
         run_id = resp.json()["data"]["id"]
-        return {"run_id": run_id, "status": "RUNNING", "search": search_string}
+        return {"run_id": run_id, "status": "RUNNING", "search": search_label}
 
 
 @router.get("/runs/{run_id}/status")
