@@ -21,32 +21,26 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 - [x] BLOCCO 2 — AI Scorecard Generator: scoring.py + prompts.py + pdf/generator.py
 - [x] BLOCCO 3 — Sales Infrastructure: landing page + thank-you page implementate
 - [x] BLOCCO 3b — CRM: dashboard admin + pipeline lead + clienti attivi implementati
+- [x] BLOCCO 3c — Prospecting: scraping Google Maps via Apify + sezione CRM /admin/prospecting
 - [ ] BLOCCO 4 — Core AI Engine (post-MVP)
 
-## Ultimo avanzamento (2026-03-13) — Test end-to-end completato ✅
+## Ultimo avanzamento (2026-03-14) — Prospecting Apify + Team Workflow ✅
 
-### Test completati oggi
-- **Backend** avviato con `python -m uvicorn main:app --reload` ✅
-- **Frontend** avviato con `npm run dev` ✅
-- **Survey completa** → lead salvato in Supabase ✅
-- **CRM frontend** su `/admin`, `/admin/leads`, `/admin/clients` ✅
-- **CRM API** `/crm/stats` e `/crm/leads` funzionanti ✅
-- **Scorecard AI** generata correttamente (crediti Anthropic ricaricati $5) ✅
-- **Email** inviata via Resend ✅
+### Fatto in questa sessione
+- **Team workflow** aggiornato: naming `feat/`, `fix/`, `spike/`, `develop` opzionale
+- **Prompt copia-incolla** per Claude Code aggiunti in CLAUDE.md
+- **`docs/team-workflow.md`** creato con workflow quotidiano completo
+- **BLOCCO 3c — Prospecting** implementato e mergiato su main:
+  - `backend/routes/prospecting.py`: scraping Google Maps via Apify (`compass/crawler-google-places`)
+  - Filtri: settore, città, dimensione azienda (micro/piccola/media), fascia fatturato
+  - Salvataggio automatico risultati in Supabase (`prospecting_leads`)
+  - `frontend/app/admin/prospecting/page.tsx`: UI con form, polling, tabella risultati, azioni (contatta/converti/scarta)
+  - Nuova tabella Supabase `prospecting_leads` (schema in `supabase_schema.sql`)
+- **Luigi** ha branch aperto `luigi/nuova-survey` con 12 commit (redesign frontend + certificato PDF) — PR non ancora mergiata
 
-### Fix applicati in questa sessione
-- Aggiunti endpoint `POST /survey/retry-pending` e `POST /survey/resend-email/{lead_id}`
-- `retry-pending`: processa tutti i lead con status `new` che non hanno ricevuto scorecard
-- `resend-email/{lead_id}`: rimanda email a lead già `survey_done` (scorecard già generata)
-- Fix logging errori email (errori ora visibili nel terminale)
-- `FROM_EMAIL` impostato su `onboarding@resend.dev` per testing (sandbox Resend)
-
-### Collaborazione
-- Luigi Negros (`luiginegros`) aggiunto come collaboratore GitHub
-- Branch `develop` creato come branch di integrazione
-- `main` protetto: richiede PR approvata per merge
-- Workflow: `luigi/feature` o `alessio/feature` → PR → `develop` → `main`
-- Luigi: backend (FastAPI) | Alessio: frontend (Next.js)
+### Note importanti porta backend
+Le porte 8000 e 8001 hanno processi Windows bloccati non killabili.
+Usare sempre **porta 8002** per il backend in sviluppo locale.
 
 ## Onboarding Luigi — Benvenuto nel progetto
 
@@ -208,8 +202,8 @@ npm run build         # build completa — verifica che non ci siano errori di p
 ```bash
 # Nessun lint/test automatico configurato ancora — vedi TODO consigliati
 # Per ora: avviare il server e testare manualmente i nuovi endpoint via Swagger
-python -m uvicorn main:app --reload   # avvia da cartella backend/
-# → http://localhost:8000/docs → testare ogni endpoint modificato
+python -m uvicorn main:app --port 8002   # avvia da cartella backend/
+# → http://localhost:8002/docs → testare ogni endpoint modificato
 ```
 
 ### Review veloce (entrambi)
@@ -263,6 +257,10 @@ git checkout -b feat/nome-task        # o fix/ o spike/
 git add backend/
 git commit -m "feat: descrizione breve"
 
+# Testa il backend prima della PR
+python -m uvicorn main:app --port 8002
+# → http://localhost:8002/docs
+
 # Fine sessione — push e apri PR verso main
 git push origin feat/nome-task
 # → github.com/AlessioSerreli/AI-Consulting-for-PMI
@@ -313,19 +311,21 @@ git pull origin main
 ```
 
 ## Punto di ripresa (prossima sessione)
-Il flusso end-to-end funziona completamente. Prossimi step:
+Il flusso end-to-end funziona completamente incluso il prospecting. Prossimi step:
 
-1. **Deploy**: frontend su Vercel, backend su Railway/Render
-2. **Dominio**: verificare `aiconsultingpmi.it` su Resend e aggiornare `FROM_EMAIL` nel `.env` di produzione
-3. **Calendly**: sostituire il link placeholder nel thank-you page con quello reale
-4. **Decisioni da prendere**: nome brand, pricing, lingua survey
+1. **PR Luigi**: fare review e merge di `luigi/nuova-survey` (redesign frontend + certificato PDF)
+2. **Deploy**: frontend su Vercel, backend su Railway/Render
+3. **Dominio**: verificare `aiconsultingpmi.it` su Resend e aggiornare `FROM_EMAIL` nel `.env` di produzione
+4. **Calendly**: sostituire il link placeholder nel thank-you page con quello reale
+5. **Decisioni da prendere**: nome brand, pricing, lingua survey
 
 ## Note operative
-- Avviare backend: `cd backend` poi `python -m uvicorn main:app --reload` (usare cmd, non PowerShell)
+- Avviare backend: `cd backend` poi `python -m uvicorn main:app --port 8002` (usare cmd, non PowerShell)
 - Avviare frontend: `cd frontend` poi `npm run dev` (usare cmd, non PowerShell)
-- Backend su `http://localhost:8000` | Swagger su `http://localhost:8000/docs`
+- Backend su `http://localhost:8002` | Swagger su `http://localhost:8002/docs`
 - Frontend su `http://localhost:3000`
 - Con Resend sandbox (`onboarding@resend.dev`), le mail arrivano solo all'email registrata su resend.com
+- Prospecting: `/admin/prospecting` — richiede `APIFY_API_TOKEN` nel `.env` del backend
 
 ## Decisioni architetturali
 - App Router Next.js 14 (non Pages Router)
