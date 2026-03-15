@@ -177,11 +177,11 @@ develop  ← OPZIONALE. Usare solo se più feature devono integrarsi e testarsi 
 Regola opzionale: aggiungere le iniziali per chiarire l'autore → `feat/luigi-survey-redesign`, `fix/alessio-crm-stats`.
 
 ### Regole di lavoro
-1. **Mai push diretti su `main`** — è protetto, richiede PR approvata
+1. **Mai push diretti su `main`** — ogni modifica passa da branch dedicato
 2. **Ogni task = 1 branch** con naming `feat/`, `fix/`, o `spike/`
 3. Il branch parte sempre da `main` aggiornato (non da `develop` salvo necessità)
-4. **Ogni branch termina con una PR** verso `main` (o `develop` se serve coordinamento)
-5. La PR richiede: checklist pre-merge completata + review e approval dell'altro sviluppatore
+4. **Ogni branch termina con un merge su `main`** — ognuno può mergiare il proprio branch autonomamente dopo aver completato la checklist pre-merge
+5. Non serve aspettare l'approvazione dell'altro per fare merge — basta che la checklist sia ok
 6. Non modificare mai file nell'area dell'altro senza accordo esplicito
 7. Nessun force push — se c'è un conflitto, risolverlo con merge o rebase condiviso
 
@@ -293,22 +293,24 @@ git commit -m "feat: descrizione breve"
 # Pre-merge: eseguire checklist
 cd frontend && npm run lint && npx tsc --noEmit
 
-# Fine sessione — push e apri PR verso main
-git push origin feat/nome-task
-# → github.com/AlessioSerreli/AI-Consulting-for-PMI
-# → "Compare & pull request" → base: main → descrivi le modifiche → chiedi ad Alessio di approvare
-
-# Dopo il merge
+# Fine sessione — merge diretto su main (no attesa approvazione)
 git checkout main
 git pull origin main
+git merge feat/nome-task --no-ff -m "feat: descrizione"
+git push origin main
 git branch -d feat/nome-task          # pulizia branch locale
 ```
 
-### Approvare una PR (entrambi)
-1. Vai su github.com/AlessioSerreli/AI-Consulting-for-PMI → tab **Pull Requests**
-2. Apri la PR dell'altro → leggi il diff
-3. Clicca **"Add your review"** → **"Approve"** → **"Submit review"**
-4. Clicca **"Merge pull request"** (usa "Squash and merge" per tenere `main` pulita)
+### Fare merge del proprio branch (ognuno in autonomia)
+```bash
+git checkout main
+git pull origin main
+git merge feat/nome-task --no-ff -m "feat: descrizione"
+git push origin main
+git branch -d feat/nome-task
+```
+Oppure via GitHub UI: apri la PR del tuo branch → **"Merge pull request"** → **"Confirm merge"**.
+Non serve l'approvazione dell'altro — basta aver completato la checklist pre-merge.
 
 ### Sincronizzarsi dopo un merge
 ```bash
