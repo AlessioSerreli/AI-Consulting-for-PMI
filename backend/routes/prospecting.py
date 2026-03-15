@@ -358,6 +358,32 @@ def _clean_emails(raw: list[str], domain: str) -> list[str]:
     return priority + info + rest
 
 
+async def _search_ddg_emails(company_name: str, city: str, client: httpx.AsyncClient) -> list[str]:
+    """Cerca email dell'azienda su DuckDuckGo — trova email che non compaiono sul sito."""
+    from urllib.parse import quote_plus
+    queries = [
+        f'"{company_name}" {city} email contatti',
+        f'"{company_name}" {city} "@"',
+    ]
+    found = []
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+        'Accept-Language': 'it-IT,it;q=0.9',
+    }
+    for q in queries:
+        try:
+            url = f"https://html.duckduckgo.com/html/?q={quote_plus(q)}"
+            resp = await client.get(url, headers=headers, follow_redirects=True, timeout=10)
+            if resp.status_code == 200:
+                emails = EMAIL_REGEX.findall(resp.text)
+                found.extend(emails)
+                if found:
+                    break
+        except Exception:
+            continue
+    return _clean_emails(found, "")
+
+
 async def _scrape_website_emails(website: str, client: httpx.AsyncClient) -> list[str]:
     """Scraping diretto del sito aziendale per trovare email."""
     if not website:
@@ -431,6 +457,9 @@ async def enrich_lead(lead_id: str):
     source  = None
     contact = {}
 
+    company_name = lead.get("company_name", "")
+    city = lead.get("city", "")
+
     async with httpx.AsyncClient(timeout=15) as client:
 
         # ── STEP 1: scraping diretto del sito ──────────────────────────────
@@ -446,7 +475,20 @@ async def enrich_lead(lead_id: str):
                 }
                 source = "website_scraping"
 
-        # ── STEP 2: Hunter.io (fallback se scraping non trova nulla) ───────
+        # ── STEP 2: DuckDuckGo search ───────────────────────────────────────
+        if not contact and company_name:
+            ddg_emails = await _search_ddg_emails(company_name, city, client)
+            if ddg_emails:
+                contact = {
+                    "owner_email":    ddg_emails[0],
+                    "owner_name":     "",
+                    "owner_position": "",
+                    "hunter_domain":  domain or "",
+                    "hunter_emails":  [{"email": e, "name": "", "position": ""} for e in ddg_emails],
+                }
+                source = "duckduckgo"
+
+        # ── STEP 3: Hunter.io (fallback finale) ────────────────────────────
         if not contact and domain:
             hunter_key = os.getenv("HUNTER_API_KEY")
             if hunter_key:
@@ -492,10 +534,8 @@ async def enrich_all_leads(limit: int = Query(10)):
     supabase = get_supabase()
     result = (
         supabase.table("prospecting_leads")
-        .select("id, website, owner_email")
+        .select("id, company_name, city, website, owner_email")
         .is_("owner_email", "null")
-        .not_.is_("website", "null")
-        .neq("website", "")
         .limit(limit)
         .execute()
     )
@@ -505,9 +545,11 @@ async def enrich_all_leads(limit: int = Query(10)):
 
     async with httpx.AsyncClient(timeout=15) as client:
         for lead in leads:
-            website = lead.get("website", "")
-            domain  = _extract_domain(website)
-            contact = {}
+            website      = lead.get("website", "")
+            company_name = lead.get("company_name", "")
+            city         = lead.get("city", "")
+            domain       = _extract_domain(website)
+            contact      = {}
 
             # Step 1: scraping sito
             if website:
@@ -518,7 +560,16 @@ async def enrich_all_leads(limit: int = Query(10)):
                 except Exception:
                     pass
 
-            # Step 2: Hunter.io fallback
+            # Step 2: DuckDuckGo search
+            if not contact and company_name:
+                try:
+                    ddg_emails = await _search_ddg_emails(company_name, city, client)
+                    if ddg_emails:
+                        contact = {"owner_email": ddg_emails[0], "hunter_domain": domain or ""}
+                except Exception:
+                    pass
+
+            # Step 3: Hunter.io fallback
             if not contact and domain and hunter_key:
                 try:
                     resp = await client.get(
