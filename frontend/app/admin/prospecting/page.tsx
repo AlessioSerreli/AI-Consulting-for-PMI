@@ -163,12 +163,31 @@ export default function ProspectingPage() {
   }
 
   const [enrichingAll, setEnrichingAll] = useState(false)
+  const [outreachSending, setOutreachSending] = useState<string | null>(null)
+  const [outreachSent, setOutreachSent] = useState<Set<string>>(new Set())
 
   async function enrichAll() {
     setEnrichingAll(true)
     await fetch(`${API_URL}/prospecting/leads/enrich-all?limit=20`, { method: 'POST' }).catch(() => null)
     await loadSavedLeads()
     setEnrichingAll(false)
+  }
+
+  async function sendOutreach(lead: ProspectingLead) {
+    if (!lead.owner_email && !lead.email) {
+      alert('Nessuna email disponibile. Esegui prima l\'enrich Hunter.io.')
+      return
+    }
+    setOutreachSending(lead.id)
+    const res = await fetch(`${API_URL}/prospecting/leads/${lead.id}/outreach`, { method: 'POST' }).catch(() => null)
+    setOutreachSending(null)
+    if (res?.ok) {
+      setOutreachSent(prev => new Set(Array.from(prev).concat(lead.id)))
+      setSavedLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'contacted' } : l))
+      setNewResults(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'contacted' } : l))
+    } else {
+      alert('Errore invio email. Controlla i log del backend.')
+    }
   }
 
   return (
@@ -347,7 +366,7 @@ export default function ProspectingPage() {
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-slate-400 text-sm">{newResults.length} aziende trovate · {searchLabel}</p>
                 </div>
-                <LeadTable leads={newResults} onStatusChange={updateStatus} onEnrich={enrichLead} />
+                <LeadTable leads={newResults} onStatusChange={updateStatus} onEnrich={enrichLead} onOutreach={sendOutreach} outreachSending={outreachSending} outreachSent={outreachSent} />
               </>
             )}
           </div>
@@ -360,7 +379,7 @@ export default function ProspectingPage() {
                 <p>Nessun lead salvato ancora. Avvia una ricerca per iniziare.</p>
               </div>
             ) : (
-              <LeadTable leads={savedLeads} onStatusChange={updateStatus} onEnrich={enrichLead} />
+              <LeadTable leads={savedLeads} onStatusChange={updateStatus} onEnrich={enrichLead} onOutreach={sendOutreach} outreachSending={outreachSending} outreachSent={outreachSent} />
             )}
           </div>
         )}
@@ -369,10 +388,13 @@ export default function ProspectingPage() {
   )
 }
 
-function LeadTable({ leads, onStatusChange, onEnrich }: {
+function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSending, outreachSent }: {
   leads: ProspectingLead[]
   onStatusChange: (id: string, status: string) => void
   onEnrich: (id: string) => Promise<void>
+  onOutreach: (lead: ProspectingLead) => Promise<void>
+  outreachSending: string | null
+  outreachSent: Set<string>
 }) {
   const [enrichingId, setEnrichingId] = useState<string | null>(null)
 
@@ -472,6 +494,26 @@ function LeadTable({ leads, onStatusChange, onEnrich }: {
               </td>
               <td className="py-3">
                 <div className="flex items-center gap-1">
+                  {/* Bottone Outreach */}
+                  {lead.status !== 'converted' && (
+                    <button
+                      onClick={() => onOutreach(lead)}
+                      disabled={outreachSending === lead.id}
+                      title={outreachSent.has(lead.id) ? 'Email inviata' : 'Invia email outreach con link survey'}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        outreachSent.has(lead.id)
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          : 'bg-electric-500/10 text-electric-400 border border-electric-500/20 hover:bg-electric-500/20'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {outreachSending === lead.id
+                        ? <><RefreshCw className="w-3 h-3 animate-spin" /> Invio...</>
+                        : outreachSent.has(lead.id)
+                          ? <><CheckCircle className="w-3 h-3" /> Inviata</>
+                          : <><Mail className="w-3 h-3" /> Outreach</>
+                      }
+                    </button>
+                  )}
                   {lead.status !== 'contacted' && lead.status !== 'converted' && (
                     <button
                       onClick={() => onStatusChange(lead.id, 'contacted')}

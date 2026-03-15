@@ -47,6 +47,7 @@ class SurveyPayload(BaseModel):
     ai_concerns: Optional[List[str]] = None
     objectives: Optional[List[str]] = None
     free_notes: Optional[str] = None
+    prospecting_ref: Optional[str] = None
 
 @router.post("/survey")
 async def submit_survey(payload: SurveyPayload, background_tasks: BackgroundTasks):
@@ -64,6 +65,17 @@ async def submit_survey(payload: SurveyPayload, background_tasks: BackgroundTask
         }).execute()
 
         lead_id = result.data[0]["id"]
+
+        # Collega il prospecting lead se presente
+        if data.get("prospecting_ref"):
+            try:
+                supabase.table("prospecting_leads").update({
+                    "status": "converted",
+                    "notes": f"Survey compilata — lead_id: {lead_id}",
+                }).eq("id", data["prospecting_ref"]).execute()
+            except Exception:
+                pass
+
         background_tasks.add_task(send_confirmation_email, data)
         background_tasks.add_task(generate_scorecard_async, lead_id, data)
         return {"success": True, "lead_id": lead_id}
