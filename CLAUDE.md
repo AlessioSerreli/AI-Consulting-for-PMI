@@ -22,21 +22,27 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 - [x] BLOCCO 3 — Sales Infrastructure: landing page + thank-you page implementate
 - [x] BLOCCO 3b — CRM: dashboard admin + pipeline lead + clienti attivi implementati
 - [x] BLOCCO 3c — Prospecting: scraping Google Maps via Apify + sezione CRM /admin/prospecting
+- [x] BLOCCO 3d — Hunter.io Enrichment: email e decision maker automatici per ogni lead
 - [ ] BLOCCO 4 — Core AI Engine (post-MVP)
 
-## Ultimo avanzamento (2026-03-14) — Prospecting Apify + Team Workflow ✅
+## Ultimo avanzamento (2026-03-15) — Hunter.io Enrichment completo ✅
 
 ### Fatto in questa sessione
-- **Team workflow** aggiornato: naming `feat/`, `fix/`, `spike/`, `develop` opzionale
-- **Prompt copia-incolla** per Claude Code aggiunti in CLAUDE.md
-- **`docs/team-workflow.md`** creato con workflow quotidiano completo
-- **BLOCCO 3c — Prospecting** implementato e mergiato su main:
-  - `backend/routes/prospecting.py`: scraping Google Maps via Apify (`compass/crawler-google-places`)
-  - Filtri: settore, città, dimensione azienda (micro/piccola/media), fascia fatturato
-  - Salvataggio automatico risultati in Supabase (`prospecting_leads`)
-  - `frontend/app/admin/prospecting/page.tsx`: UI con form, polling, tabella risultati, azioni (contatta/converti/scarta)
-  - Nuova tabella Supabase `prospecting_leads` (schema in `supabase_schema.sql`)
-- **Luigi** ha branch aperto `luigi/nuova-survey` con 12 commit (redesign frontend + certificato PDF) — PR non ancora mergiata
+- **Merge `luigi/hunter-enrichment`** su main:
+  - `backend/routes/prospecting.py`: 2 nuovi endpoint
+    - `POST /prospecting/leads/{id}/enrich` — arricchisce singolo lead via Hunter.io domain-search
+    - `POST /prospecting/leads/enrich-all?limit=N` — batch enrichment su N lead con sito web
+  - Logica priorità decision maker: Owner > CEO > Founder > Director > primo disponibile
+  - `supabase_schema.sql` aggiornato con 5 nuove colonne
+- **Supabase** — eseguite ALTER TABLE per aggiungere colonne Hunter.io:
+  `owner_name`, `owner_email`, `owner_position`, `hunter_domain`, `hunter_emails`
+- **`backend/.env`** — aggiunta `HUNTER_API_KEY` (key Hunter.io free tier)
+- **Test confermato**: BRESCIANI s.r.l. → Vittorio Bresciani (Owner) trovato e salvato
+- **Frontend `feat/prospecting-hunter-ui`** mergiato su main:
+  - Colonna **Decision Maker** nella tabella prospect (nome, ruolo, email cliccabile)
+  - Pulsante **⚡ Enrich** per singolo lead (appare solo se non enriched e ha sito web)
+  - Pulsante **⚡ Enrich All** per batch enrichment di tutti i lead
+  - Sidebar Prospecting aggiunta anche a `/admin/leads` e `/admin/clients`
 
 ### Note importanti porta backend
 Le porte 8000 e 8001 hanno processi Windows bloccati non killabili.
@@ -311,13 +317,12 @@ git pull origin main
 ```
 
 ## Punto di ripresa (prossima sessione)
-Il flusso end-to-end funziona completamente incluso il prospecting. Prossimi step:
+Il flusso end-to-end funziona completamente: prospecting → enrichment → CRM. Prossimi step:
 
-1. **PR Luigi**: fare review e merge di `luigi/nuova-survey` (redesign frontend + certificato PDF)
-2. **Deploy**: frontend su Vercel, backend su Railway/Render
-3. **Dominio**: verificare `aiconsultingpmi.it` su Resend e aggiornare `FROM_EMAIL` nel `.env` di produzione
-4. **Calendly**: sostituire il link placeholder nel thank-you page con quello reale
-5. **Decisioni da prendere**: nome brand, pricing, lingua survey
+1. **Deploy**: frontend su Vercel, backend su Railway/Render
+2. **Dominio**: verificare `aiconsultingpmi.it` su Resend e aggiornare `FROM_EMAIL` nel `.env` di produzione
+3. **Calendly**: sostituire il link placeholder nel thank-you page con quello reale
+4. **Decisioni da prendere**: nome brand, pricing, lingua survey
 
 ## Note operative
 - Avviare backend: `cd backend` poi `python -m uvicorn main:app --port 8002` (usare cmd, non PowerShell)
@@ -326,6 +331,7 @@ Il flusso end-to-end funziona completamente incluso il prospecting. Prossimi ste
 - Frontend su `http://localhost:3000`
 - Con Resend sandbox (`onboarding@resend.dev`), le mail arrivano solo all'email registrata su resend.com
 - Prospecting: `/admin/prospecting` — richiede `APIFY_API_TOKEN` nel `.env` del backend
+- Enrichment Hunter.io: richiede `HUNTER_API_KEY` nel `.env` — free tier: 250 ricerche/mese
 
 ## Decisioni architetturali
 - App Router Next.js 14 (non Pages Router)
