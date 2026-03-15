@@ -260,8 +260,13 @@ async def enrich_lead(lead_id: str):
         "hunter_emails":  [{"email": e.get("value"), "name": f"{e.get('first_name','')} {e.get('last_name','')}".strip(), "position": e.get("position","")} for e in emails],
     }
 
-    supabase.table("prospecting_leads").update(contact).eq("id", lead_id).execute()
-    return {"enriched": True, "domain": domain, "contact": contact}
+    try:
+        supabase.table("prospecting_leads").update(contact).eq("id", lead_id).execute()
+        saved = True
+    except Exception:
+        saved = False  # colonne non ancora create su Supabase
+
+    return {"enriched": True, "saved": saved, "domain": domain, "contact": contact}
 
 
 @router.post("/leads/enrich-all")
