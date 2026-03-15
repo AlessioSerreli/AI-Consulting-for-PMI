@@ -359,28 +359,56 @@ def _clean_emails(raw: list[str], domain: str) -> list[str]:
 
 
 async def _search_ddg_emails(company_name: str, city: str, client: httpx.AsyncClient) -> list[str]:
-    """Cerca email dell'azienda su DuckDuckGo — trova email che non compaiono sul sito."""
+    """
+    Cerca email azienda via DuckDuckGo:
+    1. Ottiene i primi risultati di ricerca
+    2. Visita le pagine linkate e cerca email nel contenuto
+    """
+    import re as _re2
     from urllib.parse import quote_plus
+    LINK_RE = _re2.compile(r'class="result__url"[^>]*>([^<]+)<')
+    HREF_RE = _re2.compile(r'href="//duckduckgo\.com/l/\?uddg=([^"&]+)')
+
     queries = [
         f'"{company_name}" {city} email contatti',
-        f'"{company_name}" {city} "@"',
+        f'"{company_name}" {city} contatti',
     ]
-    found = []
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
         'Accept-Language': 'it-IT,it;q=0.9',
     }
+    found = []
+
     for q in queries:
         try:
-            url = f"https://html.duckduckgo.com/html/?q={quote_plus(q)}"
-            resp = await client.get(url, headers=headers, follow_redirects=True, timeout=10)
-            if resp.status_code == 200:
-                emails = EMAIL_REGEX.findall(resp.text)
-                found.extend(emails)
-                if found:
-                    break
+            ddg_url = f"https://html.duckduckgo.com/html/?q={quote_plus(q)}"
+            resp = await client.get(ddg_url, headers=headers, follow_redirects=True, timeout=10)
+            if resp.status_code != 200:
+                continue
+
+            # Prova prima a trovare email direttamente negli snippet
+            direct = EMAIL_REGEX.findall(resp.text)
+            found.extend(direct)
+
+            # Estrai URL dei risultati e visita i primi 3
+            from urllib.parse import unquote
+            hrefs = HREF_RE.findall(resp.text)[:3]
+            for raw_href in hrefs:
+                page_url = unquote(raw_href)
+                if not page_url.startswith('http'):
+                    page_url = 'https://' + page_url
+                try:
+                    page = await client.get(page_url, headers=headers, follow_redirects=True, timeout=8)
+                    if page.status_code == 200:
+                        found.extend(EMAIL_REGEX.findall(page.text))
+                except Exception:
+                    continue
+
+            if found:
+                break
         except Exception:
             continue
+
     return _clean_emails(found, "")
 
 
