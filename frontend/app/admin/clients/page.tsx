@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Brain, Users, TrendingUp, CheckCircle } from 'lucide-react'
+import { Brain, Users, TrendingUp, CheckCircle, Target } from 'lucide-react'
 
 const PHASES = ['Audit', 'Implementazione', 'Formazione', 'Manutenzione']
 
@@ -11,6 +11,7 @@ function Sidebar({ active }: { active: string }) {
     { href: '/admin', label: 'Dashboard', icon: TrendingUp },
     { href: '/admin/leads', label: 'Pipeline Lead', icon: Users },
     { href: '/admin/clients', label: 'Clienti Attivi', icon: Brain },
+    { href: '/admin/prospecting', label: 'Prospecting', icon: Target },
   ]
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-navy-800 border-r border-navy-700 flex flex-col z-40">

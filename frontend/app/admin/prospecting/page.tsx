@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { Brain, Users, TrendingUp, Search, MapPin, Phone, Globe, Star, Target, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
+import { Brain, Users, TrendingUp, Search, MapPin, Phone, Globe, Star, Target, CheckCircle, XCircle, Clock, RefreshCw, Mail, Zap } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -30,6 +30,9 @@ interface ProspectingLead {
   status: string
   notes: string | null
   created_at: string
+  owner_name: string | null
+  owner_email: string | null
+  owner_position: string | null
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -146,6 +149,26 @@ export default function ProspectingPage() {
     })
     setSavedLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l))
     setNewResults(prev => prev.map(l => l.id === id ? { ...l, status } : l))
+  }
+
+  async function enrichLead(id: string) {
+    const res = await fetch(`${API_URL}/prospecting/leads/${id}/enrich`, { method: 'POST' }).catch(() => null)
+    if (!res?.ok) return
+    const data = await res.json()
+    if (data.enriched && data.contact) {
+      const update = { owner_name: data.contact.owner_name, owner_email: data.contact.owner_email, owner_position: data.contact.owner_position }
+      setSavedLeads(prev => prev.map(l => l.id === id ? { ...l, ...update } : l))
+      setNewResults(prev => prev.map(l => l.id === id ? { ...l, ...update } : l))
+    }
+  }
+
+  const [enrichingAll, setEnrichingAll] = useState(false)
+
+  async function enrichAll() {
+    setEnrichingAll(true)
+    await fetch(`${API_URL}/prospecting/leads/enrich-all?limit=20`, { method: 'POST' }).catch(() => null)
+    await loadSavedLeads()
+    setEnrichingAll(false)
   }
 
   return (
@@ -265,6 +288,20 @@ export default function ProspectingPage() {
           )}
         </div>
 
+        {/* Enrich All */}
+        <div className="flex justify-end mb-3">
+          <button
+            onClick={enrichAll}
+            disabled={enrichingAll}
+            className="flex items-center gap-2 px-4 py-2 bg-navy-800 border border-navy-700 hover:border-electric-500/50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-xl text-sm transition-colors"
+          >
+            {enrichingAll
+              ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Enrichment in corso...</>
+              : <><Zap className="w-3.5 h-3.5 text-electric-400" /> Enrich All (Hunter.io)</>
+            }
+          </button>
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-1 mb-4 bg-navy-800 border border-navy-700 rounded-xl p-1 w-fit">
           <button
@@ -310,7 +347,7 @@ export default function ProspectingPage() {
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-slate-400 text-sm">{newResults.length} aziende trovate · {searchLabel}</p>
                 </div>
-                <LeadTable leads={newResults} onStatusChange={updateStatus} />
+                <LeadTable leads={newResults} onStatusChange={updateStatus} onEnrich={enrichLead} />
               </>
             )}
           </div>
@@ -323,7 +360,7 @@ export default function ProspectingPage() {
                 <p>Nessun lead salvato ancora. Avvia una ricerca per iniziare.</p>
               </div>
             ) : (
-              <LeadTable leads={savedLeads} onStatusChange={updateStatus} />
+              <LeadTable leads={savedLeads} onStatusChange={updateStatus} onEnrich={enrichLead} />
             )}
           </div>
         )}
@@ -332,7 +369,19 @@ export default function ProspectingPage() {
   )
 }
 
-function LeadTable({ leads, onStatusChange }: { leads: ProspectingLead[], onStatusChange: (id: string, status: string) => void }) {
+function LeadTable({ leads, onStatusChange, onEnrich }: {
+  leads: ProspectingLead[]
+  onStatusChange: (id: string, status: string) => void
+  onEnrich: (id: string) => Promise<void>
+}) {
+  const [enrichingId, setEnrichingId] = useState<string | null>(null)
+
+  async function handleEnrich(id: string) {
+    setEnrichingId(id)
+    await onEnrich(id)
+    setEnrichingId(null)
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -340,6 +389,7 @@ function LeadTable({ leads, onStatusChange }: { leads: ProspectingLead[], onStat
           <tr className="border-b border-navy-700">
             <th className="text-left text-slate-400 font-medium pb-3 pr-4">Azienda</th>
             <th className="text-left text-slate-400 font-medium pb-3 pr-4">Contatti</th>
+            <th className="text-left text-slate-400 font-medium pb-3 pr-4">Decision Maker</th>
             <th className="text-left text-slate-400 font-medium pb-3 pr-4">Rating</th>
             <th className="text-left text-slate-400 font-medium pb-3 pr-4">Status</th>
             <th className="text-left text-slate-400 font-medium pb-3">Azioni</th>
@@ -374,6 +424,35 @@ function LeadTable({ leads, onStatusChange }: { leads: ProspectingLead[], onStat
                     </a>
                   )}
                 </div>
+              </td>
+              <td className="py-3 pr-4 min-w-[180px]">
+                {lead.owner_name || lead.owner_email ? (
+                  <div className="space-y-0.5">
+                    {lead.owner_name && (
+                      <div className="text-white text-xs font-medium">{lead.owner_name}</div>
+                    )}
+                    {lead.owner_position && (
+                      <div className="text-slate-500 text-xs">{lead.owner_position}</div>
+                    )}
+                    {lead.owner_email && (
+                      <a href={`mailto:${lead.owner_email}`} className="flex items-center gap-1 text-electric-400 text-xs hover:underline">
+                        <Mail className="w-3 h-3" /> {lead.owner_email}
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleEnrich(lead.id)}
+                    disabled={enrichingId === lead.id || !lead.website}
+                    title={!lead.website ? 'Nessun sito web disponibile' : 'Cerca decision maker su Hunter.io'}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-navy-600 hover:border-electric-500/50 text-slate-500 hover:text-electric-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs"
+                  >
+                    {enrichingId === lead.id
+                      ? <><RefreshCw className="w-3 h-3 animate-spin" /> Ricerca...</>
+                      : <><Zap className="w-3 h-3" /> Enrich</>
+                    }
+                  </button>
+                )}
               </td>
               <td className="py-3 pr-4">
                 {lead.rating ? (
