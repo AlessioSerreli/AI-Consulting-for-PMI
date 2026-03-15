@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Brain, Users, TrendingUp, Mail, Star } from 'lucide-react'
+import { Brain, Users, TrendingUp, Mail, Star, Target } from 'lucide-react'
 
 const PIPELINE_STAGES = [
   { id: 'new', label: 'Nuovo Lead', color: 'border-electric-500 text-electric-400 bg-electric-500/10' },
@@ -18,6 +18,7 @@ function Sidebar({ active }: { active: string }) {
     { href: '/admin', label: 'Dashboard', icon: TrendingUp },
     { href: '/admin/leads', label: 'Pipeline Lead', icon: Users },
     { href: '/admin/clients', label: 'Clienti Attivi', icon: Brain },
+    { href: '/admin/prospecting', label: 'Prospecting', icon: Target },
   ]
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-navy-800 border-r border-navy-700 flex flex-col z-40">
