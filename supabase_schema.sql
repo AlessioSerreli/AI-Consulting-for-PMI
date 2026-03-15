@@ -44,8 +44,21 @@ CREATE TABLE IF NOT EXISTS prospecting_leads (
   apify_run_id     TEXT,
   status           TEXT NOT NULL DEFAULT 'new',  -- new, contacted, converted, dismissed
   notes            TEXT,
+  -- Campi Hunter.io enrichment
+  owner_name       TEXT,
+  owner_email      TEXT,
+  owner_position   TEXT,
+  hunter_domain    TEXT,
+  hunter_emails    JSONB,
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Aggiunta colonne Hunter.io a tabella esistente (esegui se la tabella esiste già)
+ALTER TABLE prospecting_leads ADD COLUMN IF NOT EXISTS owner_name TEXT;
+ALTER TABLE prospecting_leads ADD COLUMN IF NOT EXISTS owner_email TEXT;
+ALTER TABLE prospecting_leads ADD COLUMN IF NOT EXISTS owner_position TEXT;
+ALTER TABLE prospecting_leads ADD COLUMN IF NOT EXISTS hunter_domain TEXT;
+ALTER TABLE prospecting_leads ADD COLUMN IF NOT EXISTS hunter_emails JSONB;
 
 CREATE INDEX IF NOT EXISTS prospecting_leads_status_idx ON prospecting_leads(status);
 CREATE INDEX IF NOT EXISTS prospecting_leads_created_at_idx ON prospecting_leads(created_at DESC);

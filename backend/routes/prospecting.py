@@ -8,7 +8,8 @@ from supabase import create_client
 router = APIRouter(prefix="/prospecting")
 
 APIFY_ACTOR = "nwua9Gu5YrADL7ZDj"
-APIFY_BASE = "https://api.apify.com/v2"
+APIFY_BASE  = "https://api.apify.com/v2"
+HUNTER_BASE = "https://api.hunter.io/v2"
 
 
 def get_supabase():
@@ -185,3 +186,128 @@ async def update_prospecting_lead(lead_id: str, update: LeadStatusUpdate):
         data["notes"] = update.notes
     result = supabase.table("prospecting_leads").update(data).eq("id", lead_id).execute()
     return result.data[0] if result.data else {}
+
+
+def _extract_domain(url: str) -> Optional[str]:
+    """Estrae il dominio da un URL (es. https://www.example.it → example.it)."""
+    if not url:
+        return None
+    url = url.strip().rstrip("/")
+    if "://" not in url:
+        url = "https://" + url
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain if "." in domain else None
+    except Exception:
+        return None
+
+
+@router.post("/leads/{lead_id}/enrich")
+async def enrich_lead(lead_id: str):
+    """Arricchisce un lead con email e contatti dal dominio tramite Hunter.io."""
+    hunter_key = os.getenv("HUNTER_API_KEY")
+    if not hunter_key:
+        raise HTTPException(500, "HUNTER_API_KEY non configurata nel .env")
+
+    supabase = get_supabase()
+    result = supabase.table("prospecting_leads").select("*").eq("id", lead_id).execute()
+    if not result.data:
+        raise HTTPException(404, "Lead non trovato")
+
+    lead = result.data[0]
+    domain = _extract_domain(lead.get("website", ""))
+    if not domain:
+        return {"enriched": False, "reason": "Nessun sito web disponibile per questo lead"}
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            f"{HUNTER_BASE}/domain-search",
+            params={"domain": domain, "api_key": hunter_key, "limit": 5},
+        )
+
+    if resp.status_code != 200:
+        raise HTTPException(502, f"Errore Hunter.io: {resp.text}")
+
+    data = resp.json().get("data", {})
+    emails = data.get("emails", [])
+
+    if not emails:
+        return {"enriched": False, "domain": domain, "reason": "Nessuna email trovata su Hunter.io"}
+
+    # Cerca il decision maker: Owner > CEO > Founder > Director > primo disponibile
+    priority = ["owner", "ceo", "founder", "co-founder", "director", "titolare", "amministratore"]
+    best = None
+    for p in priority:
+        for e in emails:
+            position = (e.get("position") or "").lower()
+            if p in position:
+                best = e
+                break
+        if best:
+            break
+    if not best:
+        best = emails[0]
+
+    contact = {
+        "owner_name":     f"{best.get('first_name', '')} {best.get('last_name', '')}".strip(),
+        "owner_email":    best.get("value", ""),
+        "owner_position": best.get("position", ""),
+        "hunter_domain":  domain,
+        "hunter_emails":  [{"email": e.get("value"), "name": f"{e.get('first_name','')} {e.get('last_name','')}".strip(), "position": e.get("position","")} for e in emails],
+    }
+
+    supabase.table("prospecting_leads").update(contact).eq("id", lead_id).execute()
+    return {"enriched": True, "domain": domain, "contact": contact}
+
+
+@router.post("/leads/enrich-all")
+async def enrich_all_leads(limit: int = Query(10)):
+    """Arricchisce i primi N lead con sito web non ancora enriched."""
+    hunter_key = os.getenv("HUNTER_API_KEY")
+    if not hunter_key:
+        raise HTTPException(500, "HUNTER_API_KEY non configurata nel .env")
+
+    supabase = get_supabase()
+    result = (
+        supabase.table("prospecting_leads")
+        .select("id, website, owner_email")
+        .is_("owner_email", "null")
+        .not_.is_("website", "null")
+        .neq("website", "")
+        .limit(limit)
+        .execute()
+    )
+    leads = result.data or []
+
+    enriched, skipped = [], []
+    async with httpx.AsyncClient(timeout=15) as client:
+        for lead in leads:
+            domain = _extract_domain(lead.get("website", ""))
+            if not domain:
+                skipped.append(lead["id"])
+                continue
+            try:
+                resp = await client.get(
+                    f"{HUNTER_BASE}/domain-search",
+                    params={"domain": domain, "api_key": hunter_key, "limit": 3},
+                )
+                emails = resp.json().get("data", {}).get("emails", [])
+                if emails:
+                    best = emails[0]
+                    supabase.table("prospecting_leads").update({
+                        "owner_name":     f"{best.get('first_name','')} {best.get('last_name','')}".strip(),
+                        "owner_email":    best.get("value", ""),
+                        "owner_position": best.get("position", ""),
+                        "hunter_domain":  domain,
+                    }).eq("id", lead["id"]).execute()
+                    enriched.append(lead["id"])
+                else:
+                    skipped.append(lead["id"])
+            except Exception:
+                skipped.append(lead["id"])
+
+    return {"enriched": len(enriched), "skipped": len(skipped), "enriched_ids": enriched}
