@@ -631,10 +631,18 @@ def generate_certificate_html(scorecard: dict, survey_data: dict) -> str:
 
 def generate_certificate_pdf(scorecard: dict, survey_data: dict):
     html = generate_certificate_html(scorecard, survey_data)
+    # Prova WeasyPrint (qualità superiore, richiede GTK — funziona su Linux/produzione)
     try:
         from weasyprint import HTML
         return HTML(string=html).write_pdf()
-    except ImportError:
-        # WeasyPrint non disponibile (richiede dipendenze di sistema)
-        # Ritorna b"" — l'email verrà inviata senza allegato PDF
+    except Exception:
+        pass
+    # Fallback: xhtml2pdf (puro Python, funziona ovunque incluso Windows)
+    try:
+        import io
+        from xhtml2pdf import pisa
+        buf = io.BytesIO()
+        pisa.CreatePDF(html, dest=buf, encoding="utf-8")
+        return buf.getvalue()
+    except Exception:
         return b""
