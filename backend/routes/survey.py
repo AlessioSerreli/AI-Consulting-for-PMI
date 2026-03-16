@@ -2,7 +2,10 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 import os
+import logging
 from supabase import create_client
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -76,37 +79,39 @@ async def submit_survey(payload: SurveyPayload, background_tasks: BackgroundTask
             except Exception:
                 pass
 
-        background_tasks.add_task(send_confirmation_email, data)
         background_tasks.add_task(generate_scorecard_async, lead_id, data)
         return {"success": True, "lead_id": lead_id}
     except Exception as e:
         raise HTTPException(500, str(e))
 
-async def send_confirmation_email(survey_data: dict):
+async def send_teaser_email(scorecard: dict, survey_data: dict):
     try:
         import resend
         resend.api_key = os.getenv("RESEND_API_KEY")
         if not resend.api_key:
-            print("RESEND_API_KEY non configurata — email di conferma non inviata")
+            logger.warning("RESEND_API_KEY non configurata — teaser email non inviata")
             return
         params = {
             "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
             "to": [survey_data["contact_email"]],
-            "subject": f"Diagnosi ricevuta — {survey_data['company_name']} · AI.PMI",
-            "html": build_confirmation_html(survey_data),
+            "subject": f"Il tuo punteggio AI è pronto — {survey_data.get('company_name', '')}",
+            "html": build_teaser_email_html(scorecard, survey_data),
         }
         result = resend.Emails.send(params)
-        print(f"Email di conferma inviata: {result}")
+        logger.info("Teaser email inviata: %s", result)
     except Exception as e:
-        print(f"Errore invio email di conferma: {e}")
+        logger.error("Errore invio teaser email: %s", e)
 
 async def generate_scorecard_async(lead_id: str, survey_data: dict):
     try:
+        import base64
         from ai.scoring import generate_scorecard
         from pdf.certificate import generate_certificate_pdf
-        import resend
         scorecard = await generate_scorecard(survey_data)
         pdf_bytes = generate_certificate_pdf(scorecard, survey_data)
+
+        if pdf_bytes:
+            scorecard["_pdf_b64"] = base64.b64encode(pdf_bytes).decode()
 
         supabase = get_supabase()
         supabase.table("leads").update({
@@ -115,26 +120,9 @@ async def generate_scorecard_async(lead_id: str, survey_data: dict):
             "status": "survey_done",
         }).eq("id", lead_id).execute()
 
-        resend.api_key = os.getenv("RESEND_API_KEY")
-        if resend.api_key:
-            import base64
-            params = {
-                "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
-                "to": [survey_data["contact_email"]],
-                "subject": f"La tua AI Efficiency Scorecard — {survey_data['company_name']}",
-                "html": build_email_html(scorecard, survey_data),
-            }
-            if pdf_bytes:
-                params["attachments"] = [{"filename": "scorecard.pdf", "content": base64.b64encode(pdf_bytes).decode()}]
-            try:
-                result = resend.Emails.send(params)
-                print(f"Email inviata: {result}")
-            except Exception as email_error:
-                print(f"Errore invio email: {email_error}")
-        else:
-            print("RESEND_API_KEY non configurata")
+        await send_teaser_email(scorecard, survey_data)
     except Exception as e:
-        print(f"Error generating scorecard: {e}")
+        logger.error("Error generating scorecard for lead %s: %s", lead_id, e)
 
 @router.post("/survey/resend-email/{lead_id}")
 async def resend_email(lead_id: str):
@@ -150,24 +138,19 @@ async def resend_email(lead_id: str):
         if not scorecard or not survey_data:
             raise HTTPException(400, "Scorecard non ancora generata per questo lead")
         resend.api_key = os.getenv("RESEND_API_KEY")
-        from pdf.certificate import generate_certificate_pdf
-        import base64
-        pdf_bytes = generate_certificate_pdf(scorecard, survey_data)
         params = {
             "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
             "to": [lead["contact_email"]],
-            "subject": f"La tua AI Efficiency Scorecard — {lead['company_name']}",
-            "html": build_email_html(scorecard, survey_data),
+            "subject": f"Il tuo punteggio AI è pronto — {lead['company_name']}",
+            "html": build_teaser_email_html(scorecard, survey_data),
         }
-        if pdf_bytes:
-            params["attachments"] = [{"filename": "scorecard.pdf", "content": base64.b64encode(pdf_bytes).decode()}]
         result_email = resend.Emails.send(params)
-        print(f"Email inviata: {result_email}")
+        logger.info("Email inviata a %s: %s", lead['contact_email'], result_email)
         return {"success": True, "message": f"Email inviata a {lead['contact_email']}"}
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Errore resend-email: {e}")
+        logger.error("Errore resend-email lead %s: %s", lead_id, e)
         raise HTTPException(500, str(e))
 
 @router.post("/survey/retry/{lead_id}")
@@ -299,10 +282,26 @@ def build_email_html(scorecard: dict, survey_data: dict) -> str:
 </body></html>"""
 
 
-def build_confirmation_html(survey_data: dict) -> str:
+def build_teaser_email_html(scorecard: dict, survey_data: dict) -> str:
+    score = scorecard.get('overall_score', 0)
+    score_color = '#10B981' if score >= 70 else '#F59E0B' if score >= 40 else '#EF4444'
+    if score >= 70:
+        level_label = "Efficienza Alta"
+    elif score >= 55:
+        level_label = "Efficienza Media"
+    elif score >= 40:
+        level_label = "In Sviluppo"
+    else:
+        level_label = "Attenzione Richiesta"
     contact_name = survey_data.get('contact_name', '')
-    company_name = survey_data.get('company_name', '')
     first_name = contact_name.split()[0] if contact_name else 'Imprenditore'
+    company_name = survey_data.get('company_name', '')
+    executive_summary = scorecard.get('executive_summary', '')
+    if executive_summary:
+        sentences = [s.strip() for s in executive_summary.replace('!', '.').replace('?', '.').split('.') if s.strip()]
+        executive_summary_short = sentences[0] + '.' if sentences else ''
+    else:
+        executive_summary_short = ''
     return f"""<!DOCTYPE html>
 <html lang="it"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:Georgia,serif;">
@@ -313,11 +312,12 @@ def build_confirmation_html(survey_data: dict) -> str:
     <!-- HEADER DARK -->
     <tr><td style="background-color:#0A0F1E;padding:48px 48px 40px;text-align:left;">
       <p style="margin:0 0 28px;font-family:Georgia,serif;font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:#F59E0B;">AI · PMI ITALIA</p>
-      <p style="margin:0 0 16px;font-family:Georgia,serif;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(148,163,184,0.7);">Diagnosi ricevuta</p>
+      <p style="margin:0 0 16px;font-family:Georgia,serif;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(148,163,184,0.7);">La tua Diagnosi AI è pronta</p>
       <h1 style="margin:0;font-family:Georgia,serif;font-size:36px;font-weight:700;line-height:1.15;color:#ffffff;letter-spacing:-0.01em;">
-        Hai appena fatto la cosa<br>più intelligente<br><span style="color:#F59E0B;">della settimana.</span>
+        Il tuo punteggio AI:<br><span style="color:{score_color};">{score}/100</span>
       </h1>
-      <div style="width:48px;height:3px;background:#F59E0B;border-radius:2px;margin-top:28px;"></div>
+      <p style="margin:16px 0 0;font-family:Georgia,serif;font-size:15px;color:rgba(148,163,184,0.85);letter-spacing:0.05em;text-transform:uppercase;">{level_label}</p>
+      <div style="width:48px;height:3px;background:#F59E0B;border-radius:2px;margin-top:24px;"></div>
     </td></tr>
 
     <!-- BODY -->
@@ -326,24 +326,33 @@ def build_confirmation_html(survey_data: dict) -> str:
         Ciao <strong style="color:#0A0F1E;">{first_name}</strong>,
       </p>
       <p style="margin:0 0 24px;font-family:Georgia,serif;font-size:16px;color:#4B5563;line-height:1.8;">
-        La tua diagnosi per <strong style="color:#0A0F1E;">{company_name}</strong> è arrivata. Il nostro sistema AI sta già analizzando ogni risposta — processo per processo, inefficienza per inefficienza.
+        Abbiamo analizzato ogni risposta della tua diagnosi — processo per processo, inefficienza per inefficienza.<br>
+        <strong style="color:#0A0F1E;">{company_name}</strong> ottiene un punteggio di <strong style="color:{score_color};">{score}/100</strong>: livello <strong>{level_label}</strong>.
       </p>
-      <p style="margin:0 0 24px;font-family:Georgia,serif;font-size:16px;color:#4B5563;line-height:1.8;">
-        Entro <strong style="color:#0A0F1E;">5 giorni lavorativi</strong> riceverai un documento che la maggior parte delle aziende non ha mai visto su sé stessa.
-      </p>
+      {'''<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 28px;">
+        <tr><td style="padding:16px 20px;background:#FFFBEB;border-left:4px solid #F59E0B;border-radius:0 8px 8px 0;">
+          <p style="margin:0;font-family:Georgia,serif;font-size:14px;color:#78350F;line-height:1.7;font-style:italic;">
+            &ldquo;''' + executive_summary_short + '''&rdquo;
+          </p>
+        </td></tr>
+      </table>''' if executive_summary_short else ''}
 
       <div style="height:1px;background:#E5E7EB;margin:32px 0;"></div>
 
-      <p style="margin:0 0 8px;font-family:Georgia,serif;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#F59E0B;font-weight:700;">Cosa stai per ricevere</p>
-
+      <p style="margin:0 0 8px;font-family:Georgia,serif;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#F59E0B;font-weight:700;">Cosa scopri nella call gratuita</p>
+      <p style="margin:0 0 16px;font-family:Georgia,serif;font-size:16px;color:#4B5563;line-height:1.8;">
+        Questo è solo il quadro generale.<br>
+        Nella call gratuita di 30 minuti entriamo nel dettaglio e ti mostriamo:
+      </p>
       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
+        <tr><td style="height:8px;"></td></tr>
         <tr><td style="padding:14px 20px;background:#F8FAFC;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;">
           <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
             <td width="28" style="vertical-align:top;padding-top:1px;">
               <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">1</div>
             </td>
             <td style="font-family:Georgia,serif;font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
-              Il tuo <strong style="color:#0A0F1E;">punteggio di efficienza operativa</strong> — dove sei oggi e dove potresti essere
+              L'analisi completa delle <strong style="color:#0A0F1E;">5 dimensioni operative</strong> di {company_name} — dove perdi tempo e denaro
             </td>
           </tr></table>
         </td></tr>
@@ -354,7 +363,7 @@ def build_confirmation_html(survey_data: dict) -> str:
               <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">2</div>
             </td>
             <td style="font-family:Georgia,serif;font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
-              Le <strong style="color:#0A0F1E;">3 aree critiche</strong> della tua azienda e i quick win attivabili subito
+              I <strong style="color:#0A0F1E;">3 quick win</strong> prioritari: azioni concrete attivabili entro 30 giorni
             </td>
           </tr></table>
         </td></tr>
@@ -365,23 +374,12 @@ def build_confirmation_html(survey_data: dict) -> str:
               <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">★</div>
             </td>
             <td style="font-family:Georgia,serif;font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
-              Il <strong style="color:#0A0F1E;">Certificato di Efficienza Operativa</strong> — valido anche con banche e investitori
+              Una stima del <strong style="color:#0A0F1E;">ROI potenziale</strong> — quanto recuperi in ore e costi nei prossimi 12 mesi
             </td>
           </tr></table>
         </td></tr>
       </table>
 
-      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:36px;">
-        <tr><td style="padding:16px 20px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;">
-          <p style="margin:0;font-family:Georgia,serif;font-size:14px;color:#166534;line-height:1.6;">
-            ✓ &nbsp;<strong>Non devi fare nulla. Arriva tutto via email, completamente gratuito.</strong>
-          </p>
-        </td></tr>
-      </table>
-
-      <p style="margin:0 0 36px;font-family:Georgia,serif;font-size:16px;color:#4B5563;line-height:1.8;">
-        Nel frattempo, se vuoi anticipare i tempi o hai già qualcosa in mente, rispondimi qui.
-      </p>
     </td></tr>
 
     <!-- CTA -->
@@ -389,7 +387,7 @@ def build_confirmation_html(survey_data: dict) -> str:
       <table cellpadding="0" cellspacing="0" border="0"><tr>
         <td style="background:#0A0F1E;border-radius:10px;padding:18px 36px;">
           <a href="https://calendly.com/ai-consulting-pmi" style="font-family:Georgia,serif;font-size:16px;font-weight:700;color:#F59E0B;text-decoration:none;letter-spacing:0.02em;">
-            📞 &nbsp;Prenota una call gratuita →
+            📞 &nbsp;Prenota la call gratuita di 30 minuti →
           </a>
         </td>
       </tr></table>

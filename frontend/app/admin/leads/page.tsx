@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Brain, Users, TrendingUp, Mail, Star, Target } from 'lucide-react'
+import { Brain, Users, TrendingUp, Mail, Star, Target, FileText } from 'lucide-react'
 
 const PIPELINE_STAGES = [
   { id: 'new', label: 'Nuovo Lead', color: 'border-electric-500 text-electric-400 bg-electric-500/10' },
@@ -47,26 +47,32 @@ function Sidebar({ active }: { active: string }) {
 export default function LeadsPage() {
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
     fetch(`${apiUrl}/crm/leads`)
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(data => { setLeads(Array.isArray(data) ? data : []); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
+      .catch(() => { setFetchError(true); setLoading(false) })
+  }, [apiUrl])
 
   const getLeadsByStage = (stage: string) => leads.filter(l => l.status === stage)
 
   const updateStatus = async (leadId: string, newStatus: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    await fetch(`${apiUrl}/crm/leads/${leadId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus }),
-    })
+    const prevLeads = leads
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l))
+    try {
+      const res = await fetch(`${apiUrl}/crm/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+    } catch {
+      setLeads(prevLeads)
+    }
   }
 
   const filteredLeads = selectedStage ? leads.filter(l => l.status === selectedStage) : leads
@@ -99,6 +105,12 @@ export default function LeadsPage() {
           <div className="space-y-4">
             {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-navy-800 rounded-2xl animate-pulse" />)}
           </div>
+        ) : fetchError ? (
+          <div className="text-center py-24 text-slate-500">
+            <Users className="w-12 h-12 mx-auto mb-4 opacity-30" />
+            <p className="font-display text-3xl text-red-600/50 tracking-wide">ERRORE DI CONNESSIONE</p>
+            <p className="text-sm font-mono mt-3">Impossibile caricare i lead. Verifica che il backend sia attivo.</p>
+          </div>
         ) : filteredLeads.length === 0 ? (
           <div className="text-center py-24 text-slate-500">
             <Users className="w-12 h-12 mx-auto mb-4 opacity-30" />
@@ -128,13 +140,26 @@ export default function LeadsPage() {
                       {lead.employees && <span>{lead.employees} dip.</span>}
                     </div>
                   </div>
-                  <select
-                    value={lead.status}
-                    onChange={(e) => updateStatus(lead.id, e.target.value)}
-                    className="bg-navy-700 border border-navy-600 text-white text-xs px-3 py-2 rounded-lg outline-none cursor-pointer font-mono hover:border-electric-500/40 transition-colors"
-                  >
-                    {PIPELINE_STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                  </select>
+                  <div className="flex items-center gap-2">
+                    {lead.has_pdf && (
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/crm/leads/${lead.id}/pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-navy-700 border border-navy-600 text-electric-400 text-xs rounded-lg font-mono hover:border-electric-500/40 hover:text-electric-300 transition-colors"
+                        title="Apri PDF Scorecard"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> PDF
+                      </a>
+                    )}
+                    <select
+                      value={lead.status}
+                      onChange={(e) => updateStatus(lead.id, e.target.value)}
+                      className="bg-navy-700 border border-navy-600 text-white text-xs px-3 py-2 rounded-lg outline-none cursor-pointer font-mono hover:border-electric-500/40 transition-colors"
+                    >
+                      {PIPELINE_STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                    </select>
+                  </div>
                 </div>
               </div>
             ))}
