@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { GripVertical } from 'lucide-react'
 
@@ -78,7 +78,7 @@ const PAIN_ITEMS: { key: PainKey; label: string }[] = [
   { key: 'painMonitor', label: '📉 Difficoltà a monitorare le performance aziendali' },
 ]
 
-export default function SurveyPage() {
+function SurveyContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
@@ -652,5 +652,13 @@ export default function SurveyPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SurveyPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-navy-900" />}>
+      <SurveyContent />
+    </Suspense>
   )
 }
