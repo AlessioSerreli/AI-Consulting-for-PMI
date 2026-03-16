@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional
-import os
+import os, base64
 from supabase import create_client
 
 router = APIRouter(prefix="/crm")
@@ -17,6 +18,7 @@ class LeadUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
     estimated_value: Optional[float] = None
+    project_phase: Optional[str] = None  # audit | implementazione | formazione | manutenzione
 
 @router.get("/leads")
 async def get_leads(
@@ -32,7 +34,15 @@ async def get_leads(
         if sector:
             q = q.eq("sector", sector)
         result = q.execute()
-        return result.data
+        leads = []
+        for lead in result.data:
+            scorecard = lead.get("scorecard_data") or {}
+            lead["has_pdf"] = bool(scorecard.get("_pdf_b64"))
+            if scorecard.get("_pdf_b64"):
+                scorecard_clean = {k: v for k, v in scorecard.items() if k != "_pdf_b64"}
+                lead["scorecard_data"] = scorecard_clean
+            leads.append(lead)
+        return leads
     except Exception as e:
         raise HTTPException(500, str(e))
 
@@ -44,6 +54,48 @@ async def get_lead(lead_id: str):
         return result.data
     except Exception as e:
         raise HTTPException(404, "Lead not found")
+
+@router.get("/leads/{lead_id}/pdf")
+async def get_lead_pdf(lead_id: str):
+    try:
+        supabase = get_supabase()
+        result = supabase.table("leads").select("scorecard_data, company_name").eq("id", lead_id).single().execute()
+        scorecard = result.data.get("scorecard_data") or {}
+        pdf_b64 = scorecard.get("_pdf_b64")
+        if not pdf_b64:
+            raise HTTPException(404, "PDF non ancora generato per questo lead")
+        pdf_bytes = base64.b64decode(pdf_b64)
+        company = result.data.get("company_name", "scorecard").replace(" ", "_")
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'inline; filename="{company}_scorecard.pdf"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@router.post("/leads/{lead_id}/generate-pdf")
+async def generate_lead_pdf(lead_id: str):
+    try:
+        supabase = get_supabase()
+        result = supabase.table("leads").select("scorecard_data, survey_data, company_name").eq("id", lead_id).single().execute()
+        scorecard = result.data.get("scorecard_data")
+        survey_data = result.data.get("survey_data")
+        if not scorecard or not survey_data:
+            raise HTTPException(400, "Scorecard non disponibile per questo lead")
+        from pdf.certificate import generate_certificate_pdf
+        pdf_bytes = generate_certificate_pdf(scorecard, survey_data)
+        if not pdf_bytes:
+            raise HTTPException(500, "Generazione PDF fallita")
+        scorecard["_pdf_b64"] = base64.b64encode(pdf_bytes).decode()
+        supabase.table("leads").update({"scorecard_data": scorecard}).eq("id", lead_id).execute()
+        return {"success": True, "message": "PDF generato e salvato"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 @router.patch("/leads/{lead_id}")
 async def update_lead(lead_id: str, update: LeadUpdate):
