@@ -188,6 +188,267 @@ async def update_prospecting_lead(lead_id: str, update: LeadStatusUpdate):
     return result.data[0] if result.data else {}
 
 
+@router.post("/leads/{lead_id}/outreach")
+async def send_outreach(lead_id: str):
+    """Invia email di outreach personalizzata con link alla survey pre-compilata."""
+    resend_key = os.getenv("RESEND_API_KEY")
+    if not resend_key:
+        raise HTTPException(500, "RESEND_API_KEY non configurata")
+
+    supabase = get_supabase()
+    result = supabase.table("prospecting_leads").select("*").eq("id", lead_id).execute()
+    if not result.data:
+        raise HTTPException(404, "Lead non trovato")
+
+    lead = result.data[0]
+    owner_name    = lead.get("owner_name") or lead.get("company_name", "")
+    owner_email   = lead.get("owner_email") or lead.get("email", "")
+    company_name  = lead.get("company_name", "")
+    first_name    = owner_name.split()[0] if owner_name else "Imprenditore"
+
+    if not owner_email:
+        raise HTTPException(400, "Nessuna email disponibile per questo lead (esegui prima l'enrich)")
+
+    # URL survey pre-compilata
+    from urllib.parse import quote
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    survey_url = (
+        f"{frontend_url}/survey"
+        f"?ref={lead_id}"
+        f"&name={quote(owner_name)}"
+        f"&company={quote(company_name)}"
+        f"&email={quote(owner_email)}"
+    )
+
+    html = f"""<!DOCTYPE html>
+<html lang="it"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Georgia,serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:40px 20px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" border="0"
+       style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 40px rgba(0,0,0,0.10);">
+
+  <tr><td style="background:#0A0F1E;padding:48px 48px 40px;">
+    <p style="margin:0 0 28px;font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</p>
+    <p style="margin:0 0 16px;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(148,163,184,0.7);">Analisi gratuita</p>
+    <h1 style="margin:0;font-size:32px;font-weight:700;line-height:1.2;color:#fff;">
+      Scopri dove stai perdendo<br><span style="color:#F59E0B;">tempo e denaro</span> ogni giorno.
+    </h1>
+    <div style="width:48px;height:3px;background:#F59E0B;border-radius:2px;margin-top:28px;"></div>
+  </td></tr>
+
+  <tr><td style="padding:48px 48px 0;background:#fff;">
+    <p style="margin:0 0 24px;font-size:16px;color:#374151;line-height:1.7;">
+      Ciao <strong style="color:#0A0F1E;">{first_name}</strong>,
+    </p>
+    <p style="margin:0 0 24px;font-size:16px;color:#4B5563;line-height:1.8;">
+      Ho analizzato <strong style="color:#0A0F1E;">{company_name}</strong> e penso ci siano margini concreti
+      per ridurre il lavoro manuale e aumentare l'efficienza operativa con strumenti AI accessibili.
+    </p>
+    <p style="margin:0 0 24px;font-size:16px;color:#4B5563;line-height:1.8;">
+      Ho preparato una <strong style="color:#0A0F1E;">diagnosi gratuita</strong> — 5 minuti di questionario,
+      e ricevi un report personalizzato con il tuo punteggio di efficienza e 3 azioni concrete da implementare subito.
+    </p>
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
+      <tr><td style="padding:16px 20px;background:#F8FAFC;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+          <td width="28" style="vertical-align:top;padding-top:1px;">
+            <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">1</div>
+          </td>
+          <td style="font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
+            Il tuo <strong style="color:#0A0F1E;">punteggio di efficienza operativa</strong> vs le PMI del tuo settore
+          </td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="height:8px;"></td></tr>
+      <tr><td style="padding:16px 20px;background:#F8FAFC;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+          <td width="28" style="vertical-align:top;padding-top:1px;">
+            <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">2</div>
+          </td>
+          <td style="font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
+            Le <strong style="color:#0A0F1E;">3 aree critiche</strong> con i quick win attivabili subito
+          </td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="height:8px;"></td></tr>
+      <tr><td style="padding:16px 20px;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+          <td width="28" style="vertical-align:top;padding-top:1px;">
+            <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">★</div>
+          </td>
+          <td style="font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
+            Il <strong style="color:#0A0F1E;">Certificato di Efficienza Operativa</strong> — completamente gratuito
+          </td>
+        </tr></table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <tr><td style="padding:0 48px 48px;background:#fff;">
+    <table cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="background:#0A0F1E;border-radius:10px;padding:18px 36px;">
+        <a href="{survey_url}" style="font-size:16px;font-weight:700;color:#F59E0B;text-decoration:none;letter-spacing:0.02em;">
+          Inizia la diagnosi gratuita →
+        </a>
+      </td>
+    </tr></table>
+    <p style="margin:12px 0 0;font-size:12px;color:#9CA3AF;">Oppure rispondi a questa email. Ti rispondo entro 24 ore.</p>
+  </td></tr>
+
+  <tr><td style="padding:0 48px;"><div style="height:1px;background:#E5E7EB;"></div></td></tr>
+  <tr><td style="padding:36px 48px;background:#fff;">
+    <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#0A0F1E;">Luigi Negro</p>
+    <p style="margin:0 0 16px;font-size:13px;color:#6B7280;text-transform:uppercase;letter-spacing:0.05em;">AI Expert · Ottimizzazione Processi PMI</p>
+    <table cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="padding-right:24px;"><a href="tel:+393299576151" style="font-size:14px;color:#4B5563;text-decoration:none;">📞 +39 329 957 6151</a></td>
+      <td><a href="mailto:luigi@aiconsultingpmi.it" style="font-size:14px;color:#F59E0B;text-decoration:none;">✉️ luigi@aiconsultingpmi.it</a></td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="background:#0A0F1E;padding:20px 48px;">
+    <p style="margin:0;font-size:11px;color:rgba(148,163,184,0.5);letter-spacing:0.08em;text-transform:uppercase;">
+      © 2025 AI.PMI Italia — Puoi rispondere a questa email in qualsiasi momento
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>"""
+
+    import resend
+    resend.api_key = resend_key
+    try:
+        resend.Emails.send({
+            "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
+            "to": [owner_email],
+            "subject": f"Ho analizzato {company_name} — diagnosi gratuita per te",
+            "html": html,
+        })
+    except Exception as e:
+        raise HTTPException(502, f"Errore invio email: {e}")
+
+    # Aggiorna status prospecting lead
+    supabase.table("prospecting_leads").update({"status": "contacted"}).eq("id", lead_id).execute()
+
+    return {"success": True, "sent_to": owner_email, "survey_url": survey_url}
+
+
+import re as _re
+
+EMAIL_REGEX = _re.compile(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}')
+SKIP_EMAILS = {'noreply', 'no-reply', 'donotreply', 'mailer', 'bounce', 'support@sentry',
+               'webmaster', 'postmaster', 'abuse', 'spam', 'example', 'test@', 'email@'}
+
+def _clean_emails(raw: list[str], domain: str) -> list[str]:
+    """Filtra, deduplicazione e prioritizza email trovate sul sito."""
+    seen, result = set(), []
+    for e in raw:
+        e = e.lower().strip()
+        if e in seen: continue
+        if any(skip in e for skip in SKIP_EMAILS): continue
+        if len(e) > 80: continue
+        seen.add(e)
+        result.append(e)
+    # Priorità: email con dominio aziendale > info@ > altri
+    domain_clean = domain.replace('www.', '') if domain else ''
+    priority = [e for e in result if domain_clean and domain_clean in e and not e.startswith('info@')]
+    info     = [e for e in result if e.startswith('info@')]
+    rest     = [e for e in result if e not in priority and e not in info]
+    return priority + info + rest
+
+
+async def _search_ddg_emails(company_name: str, city: str, client: httpx.AsyncClient) -> list[str]:
+    """
+    Cerca email azienda via DuckDuckGo:
+    1. Ottiene i primi risultati di ricerca
+    2. Visita le pagine linkate e cerca email nel contenuto
+    """
+    import re as _re2
+    from urllib.parse import quote_plus
+    LINK_RE = _re2.compile(r'class="result__url"[^>]*>([^<]+)<')
+    HREF_RE = _re2.compile(r'href="//duckduckgo\.com/l/\?uddg=([^"&]+)')
+
+    queries = [
+        f'"{company_name}" {city} email contatti',
+        f'"{company_name}" {city} contatti',
+    ]
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+        'Accept-Language': 'it-IT,it;q=0.9',
+    }
+    found = []
+
+    for q in queries:
+        try:
+            ddg_url = f"https://html.duckduckgo.com/html/?q={quote_plus(q)}"
+            resp = await client.get(ddg_url, headers=headers, follow_redirects=True, timeout=10)
+            if resp.status_code != 200:
+                continue
+
+            # Prova prima a trovare email direttamente negli snippet
+            direct = EMAIL_REGEX.findall(resp.text)
+            found.extend(direct)
+
+            # Estrai URL dei risultati e visita i primi 3
+            from urllib.parse import unquote
+            hrefs = HREF_RE.findall(resp.text)[:3]
+            for raw_href in hrefs:
+                page_url = unquote(raw_href)
+                if not page_url.startswith('http'):
+                    page_url = 'https://' + page_url
+                try:
+                    page = await client.get(page_url, headers=headers, follow_redirects=True, timeout=8)
+                    if page.status_code == 200:
+                        found.extend(EMAIL_REGEX.findall(page.text))
+                except Exception:
+                    continue
+
+            if found:
+                break
+        except Exception:
+            continue
+
+    return _clean_emails(found, "")
+
+
+async def _scrape_website_emails(website: str, client: httpx.AsyncClient) -> list[str]:
+    """Scraping diretto del sito aziendale per trovare email."""
+    if not website:
+        return []
+    base = website.rstrip('/')
+    if '://' not in base:
+        base = 'https://' + base
+
+    pages_to_try = [
+        base,
+        base + '/contatti',
+        base + '/contatti.html',
+        base + '/contatti.php',
+        base + '/contact',
+        base + '/chi-siamo',
+        base + '/about',
+    ]
+
+    found = []
+    headers = {'User-Agent': 'Mozilla/5.0 (compatible; bot/1.0)'}
+    domain = _extract_domain(website) or ''
+    for url in pages_to_try:
+        try:
+            resp = await client.get(url, headers=headers, follow_redirects=True, timeout=8)
+            if resp.status_code == 200:
+                emails = EMAIL_REGEX.findall(resp.text)
+                found.extend(emails)
+                # Interrompi solo se abbiamo trovato email valide dopo il filtraggio
+                # (evita di fermarsi su pagine con sole email di tracciamento/noreply)
+                if _clean_emails(found, domain):
+                    break
+        except Exception:
+            continue
+
+    return _clean_emails(found, domain)
+
+
 def _extract_domain(url: str) -> Optional[str]:
     """Estrae il dominio da un URL (es. https://www.example.it → example.it)."""
     if not url:
@@ -208,111 +469,160 @@ def _extract_domain(url: str) -> Optional[str]:
 
 @router.post("/leads/{lead_id}/enrich")
 async def enrich_lead(lead_id: str):
-    """Arricchisce un lead con email e contatti dal dominio tramite Hunter.io."""
-    hunter_key = os.getenv("HUNTER_API_KEY")
-    if not hunter_key:
-        raise HTTPException(500, "HUNTER_API_KEY non configurata nel .env")
-
+    """
+    Arricchisce un lead con email usando 3 metodi in cascata:
+    1. Scraping diretto del sito (homepage + /contatti) — gratuito
+    2. Hunter.io domain-search — per siti strutturati
+    Salva la prima email trovata su Supabase.
+    """
     supabase = get_supabase()
     result = supabase.table("prospecting_leads").select("*").eq("id", lead_id).execute()
     if not result.data:
         raise HTTPException(404, "Lead non trovato")
 
     lead = result.data[0]
-    domain = _extract_domain(lead.get("website", ""))
-    if not domain:
-        return {"enriched": False, "reason": "Nessun sito web disponibile per questo lead"}
+    website = lead.get("website", "")
+    domain  = _extract_domain(website)
+    source  = None
+    contact = {}
+
+    company_name = lead.get("company_name", "")
+    city = lead.get("city", "")
 
     async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(
-            f"{HUNTER_BASE}/domain-search",
-            params={"domain": domain, "api_key": hunter_key, "limit": 5},
-        )
 
-    if resp.status_code != 200:
-        raise HTTPException(502, f"Errore Hunter.io: {resp.text}")
+        # ── STEP 1: scraping diretto del sito ──────────────────────────────
+        if website:
+            scraped = await _scrape_website_emails(website, client)
+            if scraped:
+                contact = {
+                    "owner_email":    scraped[0],
+                    "owner_name":     "",
+                    "owner_position": "",
+                    "hunter_domain":  domain or "",
+                    "hunter_emails":  [{"email": e, "name": "", "position": ""} for e in scraped],
+                }
+                source = "website_scraping"
 
-    data = resp.json().get("data", {})
-    emails = data.get("emails", [])
+        # ── STEP 2: DuckDuckGo search ───────────────────────────────────────
+        if not contact and company_name:
+            ddg_emails = await _search_ddg_emails(company_name, city, client)
+            if ddg_emails:
+                contact = {
+                    "owner_email":    ddg_emails[0],
+                    "owner_name":     "",
+                    "owner_position": "",
+                    "hunter_domain":  domain or "",
+                    "hunter_emails":  [{"email": e, "name": "", "position": ""} for e in ddg_emails],
+                }
+                source = "duckduckgo"
 
-    if not emails:
-        return {"enriched": False, "domain": domain, "reason": "Nessuna email trovata su Hunter.io"}
+        # ── STEP 3: Hunter.io (fallback finale) ────────────────────────────
+        if not contact and domain:
+            hunter_key = os.getenv("HUNTER_API_KEY")
+            if hunter_key:
+                resp = await client.get(
+                    f"{HUNTER_BASE}/domain-search",
+                    params={"domain": domain, "api_key": hunter_key, "limit": 5},
+                )
+                if resp.status_code == 200:
+                    emails = resp.json().get("data", {}).get("emails", [])
+                    if emails:
+                        prio = ["owner", "ceo", "founder", "co-founder", "director", "titolare", "amministratore"]
+                        best = next(
+                            (e for p in prio for e in emails if p in (e.get("position") or "").lower()),
+                            emails[0]
+                        )
+                        contact = {
+                            "owner_name":     f"{best.get('first_name','')} {best.get('last_name','')}".strip(),
+                            "owner_email":    best.get("value", ""),
+                            "owner_position": best.get("position", ""),
+                            "hunter_domain":  domain,
+                            "hunter_emails":  [{"email": e.get("value"), "name": f"{e.get('first_name','')} {e.get('last_name','')}".strip(), "position": e.get("position","")} for e in emails],
+                        }
+                        source = "hunter_io"
 
-    # Cerca il decision maker: Owner > CEO > Founder > Director > primo disponibile
-    priority = ["owner", "ceo", "founder", "co-founder", "director", "titolare", "amministratore"]
-    best = None
-    for p in priority:
-        for e in emails:
-            position = (e.get("position") or "").lower()
-            if p in position:
-                best = e
-                break
-        if best:
-            break
-    if not best:
-        best = emails[0]
-
-    contact = {
-        "owner_name":     f"{best.get('first_name', '')} {best.get('last_name', '')}".strip(),
-        "owner_email":    best.get("value", ""),
-        "owner_position": best.get("position", ""),
-        "hunter_domain":  domain,
-        "hunter_emails":  [{"email": e.get("value"), "name": f"{e.get('first_name','')} {e.get('last_name','')}".strip(), "position": e.get("position","")} for e in emails],
-    }
+    if not contact:
+        return {"enriched": False, "domain": domain, "reason": "Nessuna email trovata (sito non scrapabile e Hunter non ha risultati)"}
 
     try:
         supabase.table("prospecting_leads").update(contact).eq("id", lead_id).execute()
         saved = True
     except Exception:
-        saved = False  # colonne non ancora create su Supabase
+        saved = False
 
-    return {"enriched": True, "saved": saved, "domain": domain, "contact": contact}
+    return {"enriched": True, "saved": saved, "source": source, "domain": domain, "contact": contact}
 
 
 @router.post("/leads/enrich-all")
 async def enrich_all_leads(limit: int = Query(10)):
-    """Arricchisce i primi N lead con sito web non ancora enriched."""
-    hunter_key = os.getenv("HUNTER_API_KEY")
-    if not hunter_key:
-        raise HTTPException(500, "HUNTER_API_KEY non configurata nel .env")
-
+    """
+    Arricchisce i primi N lead non ancora enriched.
+    Usa scraping sito + Hunter.io in cascata per massimizzare il tasso di successo.
+    """
     supabase = get_supabase()
     result = (
         supabase.table("prospecting_leads")
-        .select("id, website, owner_email")
+        .select("id, company_name, city, website, owner_email")
         .is_("owner_email", "null")
-        .not_.is_("website", "null")
-        .neq("website", "")
         .limit(limit)
         .execute()
     )
     leads = result.data or []
-
+    hunter_key = os.getenv("HUNTER_API_KEY")
     enriched, skipped = [], []
+
     async with httpx.AsyncClient(timeout=15) as client:
         for lead in leads:
-            domain = _extract_domain(lead.get("website", ""))
-            if not domain:
-                skipped.append(lead["id"])
-                continue
-            try:
-                resp = await client.get(
-                    f"{HUNTER_BASE}/domain-search",
-                    params={"domain": domain, "api_key": hunter_key, "limit": 3},
-                )
-                emails = resp.json().get("data", {}).get("emails", [])
-                if emails:
-                    best = emails[0]
-                    supabase.table("prospecting_leads").update({
-                        "owner_name":     f"{best.get('first_name','')} {best.get('last_name','')}".strip(),
-                        "owner_email":    best.get("value", ""),
-                        "owner_position": best.get("position", ""),
-                        "hunter_domain":  domain,
-                    }).eq("id", lead["id"]).execute()
+            website      = lead.get("website", "")
+            company_name = lead.get("company_name", "")
+            city         = lead.get("city", "")
+            domain       = _extract_domain(website)
+            contact      = {}
+
+            # Step 1: scraping sito
+            if website:
+                try:
+                    scraped = await _scrape_website_emails(website, client)
+                    if scraped:
+                        contact = {"owner_email": scraped[0], "hunter_domain": domain or ""}
+                except Exception:
+                    pass
+
+            # Step 2: DuckDuckGo search
+            if not contact and company_name:
+                try:
+                    ddg_emails = await _search_ddg_emails(company_name, city, client)
+                    if ddg_emails:
+                        contact = {"owner_email": ddg_emails[0], "hunter_domain": domain or ""}
+                except Exception:
+                    pass
+
+            # Step 3: Hunter.io fallback
+            if not contact and domain and hunter_key:
+                try:
+                    resp = await client.get(
+                        f"{HUNTER_BASE}/domain-search",
+                        params={"domain": domain, "api_key": hunter_key, "limit": 3},
+                    )
+                    emails = resp.json().get("data", {}).get("emails", [])
+                    if emails:
+                        best = emails[0]
+                        contact = {
+                            "owner_name":  f"{best.get('first_name','')} {best.get('last_name','')}".strip(),
+                            "owner_email": best.get("value", ""),
+                            "hunter_domain": domain,
+                        }
+                except Exception:
+                    pass
+
+            if contact:
+                try:
+                    supabase.table("prospecting_leads").update(contact).eq("id", lead["id"]).execute()
                     enriched.append(lead["id"])
-                else:
+                except Exception:
                     skipped.append(lead["id"])
-            except Exception:
+            else:
                 skipped.append(lead["id"])
 
     return {"enriched": len(enriched), "skipped": len(skipped), "enriched_ids": enriched}

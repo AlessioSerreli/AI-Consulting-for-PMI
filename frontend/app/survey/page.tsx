@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { GripVertical } from 'lucide-react'
 
 type PainKey = 'painEmail' | 'painDelegare' | 'painDati' | 'painErrori' | 'painTempo' | 'painMonitor'
@@ -80,12 +80,31 @@ const PAIN_ITEMS: { key: PainKey; label: string }[] = [
 
 export default function SurveyPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
   const [data, setData] = useState<FormData>(INITIAL)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null)
+  const [prospectingRef, setProspectingRef] = useState<string | null>(null)
+
+  // Pre-compila i campi se arrivati da un link outreach
+  useEffect(() => {
+    const ref     = searchParams.get('ref')
+    const name    = searchParams.get('name')
+    const company = searchParams.get('company')
+    const email   = searchParams.get('email')
+    if (ref) setProspectingRef(ref)
+    if (name || company || email) {
+      setData(prev => ({
+        ...prev,
+        ...(name    ? { nomeContatto: name }    : {}),
+        ...(company ? { nomeAzienda: company }  : {}),
+        ...(email   ? { email: email }          : {}),
+      }))
+    }
+  }, [searchParams])
 
   const set = (field: keyof FormData, value: FormData[keyof FormData]) => {
     setData(prev => ({ ...prev, [field]: value }))
@@ -177,6 +196,7 @@ export default function SurveyPage() {
         ai_concerns: data.preoccupazioni,
         objectives: data.obiettivi,
         free_notes: data.noteLibere,
+        ...(prospectingRef ? { prospecting_ref: prospectingRef } : {}),
       }
       const res = await fetch(`${apiUrl}/survey`, {
         method: 'POST',
