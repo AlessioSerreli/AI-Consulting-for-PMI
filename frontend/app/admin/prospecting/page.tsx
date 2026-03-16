@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { Brain, Users, TrendingUp, Search, MapPin, Phone, Globe, Star, Target, CheckCircle, XCircle, Clock, RefreshCw, Mail, Zap } from 'lucide-react'
+import { Brain, Users, TrendingUp, Search, MapPin, Phone, Globe, Star, Target, CheckCircle, XCircle, Clock, RefreshCw, Mail, Zap, UserPlus } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -34,6 +34,7 @@ interface ProspectingLead {
   owner_email: string | null
   owner_position: string | null
   outreach_sent_at: string | null
+  source: string | null
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -82,6 +83,13 @@ export default function ProspectingPage() {
   const [outreachSending, setOutreachSending] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkOutreaching, setBulkOutreaching] = useState(false)
+
+  const [showManualForm, setShowManualForm] = useState(false)
+  const [manualForm, setManualForm] = useState({
+    company_name: '', owner_email: '', owner_name: '',
+    city: '', phone: '', website: '', category: '',
+  })
+  const [manualSubmitting, setManualSubmitting] = useState(false)
 
   useEffect(() => {
     loadSavedLeads()
@@ -243,6 +251,24 @@ export default function ProspectingPage() {
     setSelectedIds(new Set())
   }
 
+  async function submitManualLead() {
+    if (!manualForm.company_name.trim() || !manualForm.owner_email.trim()) return
+    setManualSubmitting(true)
+    const res = await fetch(`${API_URL}/prospecting/leads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(manualForm),
+    }).catch(() => null)
+    setManualSubmitting(false)
+    if (res?.ok) {
+      const newLead = await res.json()
+      setSavedLeads(prev => [newLead, ...prev])
+      setManualForm({ company_name: '', owner_email: '', owner_name: '', city: '', phone: '', website: '', category: '' })
+      setShowManualForm(false)
+      setActiveTab('saved')
+    }
+  }
+
   const currentLeads = activeTab === 'search' ? newResults : savedLeads
   const allWithEmailSelected =
     currentLeads.filter(l => l.owner_email || l.email).length > 0 &&
@@ -365,6 +391,105 @@ export default function ProspectingPage() {
           )}
         </div>
 
+        {/* Manual lead form */}
+        {showManualForm && (
+          <div className="bg-navy-800 border border-navy-700 rounded-2xl p-6 mb-6">
+            <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-electric-400" />
+              Aggiungi lead manuale
+            </h2>
+            <div className="grid grid-cols-3 gap-4 mb-3">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Azienda <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  placeholder="es. Officina Rossi"
+                  value={manualForm.company_name}
+                  onChange={e => setManualForm(f => ({ ...f, company_name: e.target.value }))}
+                  className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-electric-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Email contatto <span className="text-red-400">*</span></label>
+                <input
+                  type="email"
+                  placeholder="es. info@azienda.it"
+                  value={manualForm.owner_email}
+                  onChange={e => setManualForm(f => ({ ...f, owner_email: e.target.value }))}
+                  className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-electric-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Nome referente</label>
+                <input
+                  type="text"
+                  placeholder="es. Mario Rossi"
+                  value={manualForm.owner_name}
+                  onChange={e => setManualForm(f => ({ ...f, owner_name: e.target.value }))}
+                  className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-electric-500"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Città</label>
+                <input
+                  type="text"
+                  placeholder="es. Milano"
+                  value={manualForm.city}
+                  onChange={e => setManualForm(f => ({ ...f, city: e.target.value }))}
+                  className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-electric-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Telefono</label>
+                <input
+                  type="text"
+                  placeholder="es. +39 02 1234567"
+                  value={manualForm.phone}
+                  onChange={e => setManualForm(f => ({ ...f, phone: e.target.value }))}
+                  className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-electric-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Sito web</label>
+                <input
+                  type="text"
+                  placeholder="es. www.azienda.it"
+                  value={manualForm.website}
+                  onChange={e => setManualForm(f => ({ ...f, website: e.target.value }))}
+                  className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-electric-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Categoria</label>
+                <input
+                  type="text"
+                  placeholder="es. officina meccanica"
+                  value={manualForm.category}
+                  onChange={e => setManualForm(f => ({ ...f, category: e.target.value }))}
+                  className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-electric-500"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={submitManualLead}
+                disabled={manualSubmitting || !manualForm.company_name.trim() || !manualForm.owner_email.trim()}
+                className="flex items-center gap-2 px-6 py-2.5 bg-electric-500 hover:bg-electric-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium rounded-xl text-sm transition-colors"
+              >
+                {manualSubmitting ? <><RefreshCw className="w-4 h-4 animate-spin" /> Salvataggio...</> : <><UserPlus className="w-4 h-4" /> Salva lead</>}
+              </button>
+              <button
+                onClick={() => setShowManualForm(false)}
+                className="px-4 py-2.5 text-sm text-slate-400 hover:text-white bg-navy-900 border border-navy-700 rounded-xl transition-colors"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Toolbar: Enrich All + bulk actions */}
         <div className="flex items-center justify-between mb-3">
           {selectedIds.size > 0 ? (
@@ -392,16 +517,28 @@ export default function ProspectingPage() {
           ) : (
             <div />
           )}
-          <button
-            onClick={enrichAll}
-            disabled={enrichingAll}
-            className="flex items-center gap-2 px-4 py-2 bg-navy-800 border border-navy-700 hover:border-electric-500/50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-xl text-sm transition-colors"
-          >
-            {enrichingAll
-              ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Enrichment in corso...</>
-              : <><Zap className="w-3.5 h-3.5 text-electric-400" /> Enrich All (Hunter.io)</>
-            }
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowManualForm(v => !v)}
+              className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm transition-colors ${
+                showManualForm
+                  ? 'bg-electric-500/10 border-electric-500/40 text-electric-400'
+                  : 'bg-navy-800 border-navy-700 hover:border-electric-500/50 text-slate-300 hover:text-white'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" /> Aggiungi lead manuale
+            </button>
+            <button
+              onClick={enrichAll}
+              disabled={enrichingAll}
+              className="flex items-center gap-2 px-4 py-2 bg-navy-800 border border-navy-700 hover:border-electric-500/50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-xl text-sm transition-colors"
+            >
+              {enrichingAll
+                ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Enrichment in corso...</>
+                : <><Zap className="w-3.5 h-3.5 text-electric-400" /> Enrich All (Hunter.io)</>
+              }
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -544,7 +681,12 @@ function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSendin
                 />
               </td>
               <td className="py-3 pr-4">
-                <div className="font-medium text-white">{lead.company_name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-white">{lead.company_name}</span>
+                  {lead.source === 'manual' && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-400 font-medium">Manuale</span>
+                  )}
+                </div>
                 <div className="text-slate-500 text-xs flex items-center gap-1 mt-0.5">
                   <MapPin className="w-3 h-3" />
                   {lead.city || lead.address || '—'}

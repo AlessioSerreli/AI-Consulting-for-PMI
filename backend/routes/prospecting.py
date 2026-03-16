@@ -59,6 +59,17 @@ class BulkOutreachRequest(BaseModel):
     lead_ids: List[str]
 
 
+class ManualLeadCreate(BaseModel):
+    company_name: str
+    owner_email: str
+    owner_name: Optional[str] = None
+    city: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    category: Optional[str] = None
+    notes: Optional[str] = None
+
+
 @router.post("/run")
 async def start_scraping(request: SearchRequest):
     token = get_apify_token()
@@ -181,6 +192,16 @@ async def get_prospecting_leads(
         q = q.eq("status", status)
     result = q.execute()
     return result.data
+
+
+@router.post("/leads")
+async def create_manual_lead(lead: ManualLeadCreate):
+    supabase = get_supabase()
+    data = lead.model_dump(exclude_none=True)
+    data["status"] = "new"
+    data["source"] = "manual"
+    result = supabase.table("prospecting_leads").insert(data).execute()
+    return result.data[0]
 
 
 @router.patch("/leads/{lead_id}")
