@@ -24,9 +24,44 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 - [x] BLOCCO 3c — Prospecting: scraping Google Maps via Apify + sezione CRM /admin/prospecting
 - [x] BLOCCO 3d — Hunter.io Enrichment: email e decision maker automatici per ogni lead
 - [x] BLOCCO 3e — DDG Enrichment + Outreach: scraping email via sito/DuckDuckGo, email outreach personalizzata con link survey pre-compilata
+- [x] BLOCCO 3f — Clients Page interattiva: selector fasi, note, PDF, valore contratto + teaser email scorecard
 - [ ] BLOCCO 4 — Core AI Engine (post-MVP)
 
-## Ultimo avanzamento (2026-03-16) — DDG Enrichment + Outreach + Bug Fix ✅
+## Ultimo avanzamento (2026-03-16) — Clients Page interattiva + Teaser Email + Code Review ✅
+
+### Fatto in questa sessione
+
+#### BLOCCO 3f — Clients Page interattiva
+- **`frontend/app/admin/clients/page.tsx`** — refactor completo da read-only a pagina operativa:
+  - **Selector fasi**: 4 badge cliccabili (Audit / Implementazione / Formazione / Manutenzione), quello attivo in electric-500. Click → PATCH al backend con rollback automatico su errore
+  - **Campo note**: textarea precaricata da DB, pulsante "Salva note" → PATCH. Mostra "Errore ✗" se il backend fallisce
+  - **Pulsante PDF**: visibile solo se `has_pdf === true`, apre PDF in nuova tab
+  - **Valore contratto**: input numerico con `€` prefix, validazione numero, pulsante "Salva valore" → PATCH
+  - **Error state fetch**: mostra "ERRORE DI CONNESSIONE" se il backend non risponde (non lista vuota)
+- **`backend/routes/crm.py`** — aggiunto `project_phase` a `LeadUpdate` (audit | implementazione | formazione | manutenzione)
+- **Migrazione Supabase richiesta** (da eseguire manualmente):
+  ```sql
+  ALTER TABLE leads ADD COLUMN IF NOT EXISTS project_phase text DEFAULT 'audit';
+  ```
+
+#### Teaser email scorecard (branch precedente, ora su main)
+- Email teaser post-scorecard: mostra punteggio + sommario, gating full report dietro call gratuita
+- `build_teaser_email_html()` — template HTML con CTA Calendly
+- `send_teaser_email()` — inviata come background task dopo generazione scorecard
+
+#### Code review e fix pre-merge
+- **`leads/page.tsx`**: `updateStatus()` con optimistic update + rollback su errore PATCH; `apiUrl` estratto a livello componente; error state fetch
+- **`survey.py`**: tutti i `print()` sostituiti con `logger` strutturato (`logging.getLogger`)
+- **`crm.py`**: filename PDF sanitizzato con `re.sub` (no injection header HTTP); logging su stats endpoint
+
+### Note importanti porta backend
+Le porte 8000-8004 hanno processi Windows bloccati non killabili.
+Usare **porta libera disponibile** (es. 8005, 8006...) se le precedenti sono occupate.
+Per verificare: `netstat -aon | grep ":800"`.
+
+---
+
+## Storico sessione precedente (2026-03-16) — DDG Enrichment + Outreach + Bug Fix ✅
 
 ### Fatto in questa sessione
 
@@ -324,9 +359,15 @@ git pull origin main
 ---
 
 ## Punto di ripresa (prossima sessione)
-Il flusso end-to-end funziona completamente e testato: prospecting → enrichment → outreach → survey → scorecard + PDF → CRM.
+Il flusso end-to-end funziona completamente: prospecting → enrichment → outreach → survey → scorecard + teaser email → CRM (clients page interattiva con fasi, note, PDF, valore contratto).
 
-Prossimi step prioritari:
+### Azione immediata richiesta
+**Eseguire la migrazione Supabase** (1 riga SQL) per attivare il campo `project_phase` sui clienti:
+```sql
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS project_phase text DEFAULT 'audit';
+```
+
+### Prossimi step prioritari
 1. **Deploy**: frontend su Vercel, backend su Railway/Render
 2. **Dominio**: verificare `aiconsultingpmi.it` su Resend → aggiornare `FROM_EMAIL` nel `.env` di produzione
 3. **Calendly**: sostituire il link placeholder in `thank-you/page.tsx` e nelle email con il link reale
