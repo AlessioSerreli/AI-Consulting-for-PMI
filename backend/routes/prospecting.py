@@ -351,8 +351,8 @@ def _clean_emails(raw: list[str], domain: str) -> list[str]:
         seen.add(e)
         result.append(e)
     # Priorità: email con dominio aziendale > info@ > altri
-    domain_clean = domain.replace('www.', '')
-    priority = [e for e in result if domain_clean in e and not e.startswith('info@')]
+    domain_clean = domain.replace('www.', '') if domain else ''
+    priority = [e for e in result if domain_clean and domain_clean in e and not e.startswith('info@')]
     info     = [e for e in result if e.startswith('info@')]
     rest     = [e for e in result if e not in priority and e not in info]
     return priority + info + rest
@@ -432,19 +432,20 @@ async def _scrape_website_emails(website: str, client: httpx.AsyncClient) -> lis
 
     found = []
     headers = {'User-Agent': 'Mozilla/5.0 (compatible; bot/1.0)'}
+    domain = _extract_domain(website) or ''
     for url in pages_to_try:
         try:
             resp = await client.get(url, headers=headers, follow_redirects=True, timeout=8)
             if resp.status_code == 200:
-                text = resp.text
-                emails = EMAIL_REGEX.findall(text)
+                emails = EMAIL_REGEX.findall(resp.text)
                 found.extend(emails)
-                if found:
-                    break  # basta trovare la prima pagina con email
+                # Interrompi solo se abbiamo trovato email valide dopo il filtraggio
+                # (evita di fermarsi su pagine con sole email di tracciamento/noreply)
+                if _clean_emails(found, domain):
+                    break
         except Exception:
             continue
 
-    domain = _extract_domain(website) or ''
     return _clean_emails(found, domain)
 
 
