@@ -100,11 +100,28 @@ async def send_confirmation_email(survey_data: dict):
     except Exception as e:
         print(f"Errore invio email di conferma: {e}")
 
+async def send_teaser_email(scorecard: dict, survey_data: dict):
+    try:
+        import resend
+        resend.api_key = os.getenv("RESEND_API_KEY")
+        if not resend.api_key:
+            print("RESEND_API_KEY non configurata — teaser email non inviata")
+            return
+        params = {
+            "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
+            "to": [survey_data["contact_email"]],
+            "subject": f"Il tuo punteggio AI è pronto — {survey_data.get('company_name', '')}",
+            "html": build_teaser_email_html(scorecard, survey_data),
+        }
+        result = resend.Emails.send(params)
+        print(f"Teaser email inviata: {result}")
+    except Exception as e:
+        print(f"Errore invio teaser email: {e}")
+
 async def generate_scorecard_async(lead_id: str, survey_data: dict):
     try:
         from ai.scoring import generate_scorecard
         from pdf.certificate import generate_certificate_pdf
-        import resend
         scorecard = await generate_scorecard(survey_data)
         pdf_bytes = generate_certificate_pdf(scorecard, survey_data)
 
@@ -115,24 +132,7 @@ async def generate_scorecard_async(lead_id: str, survey_data: dict):
             "status": "survey_done",
         }).eq("id", lead_id).execute()
 
-        resend.api_key = os.getenv("RESEND_API_KEY")
-        if resend.api_key:
-            import base64
-            params = {
-                "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
-                "to": [survey_data["contact_email"]],
-                "subject": f"La tua AI Efficiency Scorecard — {survey_data['company_name']}",
-                "html": build_email_html(scorecard, survey_data),
-            }
-            if pdf_bytes:
-                params["attachments"] = [{"filename": "scorecard.pdf", "content": base64.b64encode(pdf_bytes).decode()}]
-            try:
-                result = resend.Emails.send(params)
-                print(f"Email inviata: {result}")
-            except Exception as email_error:
-                print(f"Errore invio email: {email_error}")
-        else:
-            print("RESEND_API_KEY non configurata")
+        await send_teaser_email(scorecard, survey_data)
     except Exception as e:
         print(f"Error generating scorecard: {e}")
 
@@ -390,6 +390,135 @@ def build_confirmation_html(survey_data: dict) -> str:
         <td style="background:#0A0F1E;border-radius:10px;padding:18px 36px;">
           <a href="https://calendly.com/ai-consulting-pmi" style="font-family:Georgia,serif;font-size:16px;font-weight:700;color:#F59E0B;text-decoration:none;letter-spacing:0.02em;">
             📞 &nbsp;Prenota una call gratuita →
+          </a>
+        </td>
+      </tr></table>
+      <p style="margin:12px 0 0;font-family:Georgia,serif;font-size:12px;color:#9CA3AF;">Oppure rispondi a questa email, ti rispondo entro 24 ore.</p>
+    </td></tr>
+
+    <tr><td style="padding:0 48px;"><div style="height:1px;background:#E5E7EB;"></div></td></tr>
+
+    <!-- FOOTER -->
+    <tr><td style="padding:36px 48px;background:#ffffff;">
+      <p style="margin:0 0 4px;font-family:Georgia,serif;font-size:16px;font-weight:700;color:#0A0F1E;">Luigi Negro</p>
+      <p style="margin:0 0 16px;font-family:Georgia,serif;font-size:13px;color:#6B7280;letter-spacing:0.05em;text-transform:uppercase;">AI Expert · Ottimizzazione Processi PMI</p>
+      <table cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="padding-right:24px;"><a href="tel:+393299576151" style="font-family:Georgia,serif;font-size:14px;color:#4B5563;text-decoration:none;">📞 +39 329 957 6151</a></td>
+        <td><a href="mailto:luigi@aiconsultingpmi.it" style="font-family:Georgia,serif;font-size:14px;color:#F59E0B;text-decoration:none;">✉️ luigi@aiconsultingpmi.it</a></td>
+      </tr></table>
+    </td></tr>
+
+    <!-- BOTTOM BAR -->
+    <tr><td style="background:#0A0F1E;padding:20px 48px;">
+      <p style="margin:0;font-family:Georgia,serif;font-size:11px;color:rgba(148,163,184,0.5);letter-spacing:0.08em;text-transform:uppercase;">
+        Hai ricevuto questa email perché hai completato la diagnosi su AI.PMI &nbsp;·&nbsp; © 2025 AI.PMI Italia
+      </p>
+    </td></tr>
+
+  </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+
+def build_teaser_email_html(scorecard: dict, survey_data: dict) -> str:
+    score = scorecard.get('overall_score', 0)
+    score_color = '#10B981' if score >= 70 else '#F59E0B' if score >= 40 else '#EF4444'
+    if score >= 70:
+        level_label = "Efficienza Alta"
+    elif score >= 55:
+        level_label = "Efficienza Media"
+    elif score >= 40:
+        level_label = "In Sviluppo"
+    else:
+        level_label = "Attenzione Richiesta"
+    contact_name = survey_data.get('contact_name', '')
+    first_name = contact_name.split()[0] if contact_name else 'Imprenditore'
+    company_name = survey_data.get('company_name', '')
+    executive_summary = scorecard.get('executive_summary', '')
+    if executive_summary:
+        sentences = [s.strip() for s in executive_summary.replace('!', '.').replace('?', '.').split('.') if s.strip()]
+        executive_summary_short = '. '.join(sentences[:2]) + ('.' if sentences else '')
+    else:
+        executive_summary_short = ''
+    return f"""<!DOCTYPE html>
+<html lang="it"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:Georgia,serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1f5f9;padding:40px 20px;">
+  <tr><td align="center">
+  <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 40px rgba(0,0,0,0.10);">
+
+    <!-- HEADER DARK -->
+    <tr><td style="background-color:#0A0F1E;padding:48px 48px 40px;text-align:left;">
+      <p style="margin:0 0 28px;font-family:Georgia,serif;font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:#F59E0B;">AI · PMI ITALIA</p>
+      <p style="margin:0 0 16px;font-family:Georgia,serif;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(148,163,184,0.7);">Risultato Diagnosi</p>
+      <h1 style="margin:0;font-family:Georgia,serif;font-size:36px;font-weight:700;line-height:1.15;color:#ffffff;letter-spacing:-0.01em;">
+        Il tuo punteggio AI:<br><span style="color:{score_color};">{score}/100</span>
+      </h1>
+      <p style="margin:16px 0 0;font-family:Georgia,serif;font-size:15px;color:rgba(148,163,184,0.85);letter-spacing:0.05em;text-transform:uppercase;">{level_label}</p>
+      <div style="width:48px;height:3px;background:#F59E0B;border-radius:2px;margin-top:24px;"></div>
+    </td></tr>
+
+    <!-- BODY -->
+    <tr><td style="padding:48px 48px 0;background:#ffffff;">
+      <p style="margin:0 0 24px;font-family:Georgia,serif;font-size:16px;color:#374151;line-height:1.7;">
+        Ciao <strong style="color:#0A0F1E;">{first_name}</strong>,
+      </p>
+      <p style="margin:0 0 24px;font-family:Georgia,serif;font-size:16px;color:#4B5563;line-height:1.8;">
+        La diagnosi AI di <strong style="color:#0A0F1E;">{company_name}</strong> è completata. Il tuo indice di efficienza operativa è <strong style="color:{score_color};">{score}/100</strong> — livello <strong>{level_label}</strong>.
+      </p>
+      {'<p style="margin:0 0 24px;font-family:Georgia,serif;font-size:16px;color:#4B5563;line-height:1.8;">' + executive_summary_short + '</p>' if executive_summary_short else ''}
+
+      <div style="height:1px;background:#E5E7EB;margin:32px 0;"></div>
+
+      <p style="margin:0 0 8px;font-family:Georgia,serif;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#F59E0B;font-weight:700;">Cosa scopri nella call gratuita</p>
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
+        <tr><td style="height:8px;"></td></tr>
+        <tr><td style="padding:14px 20px;background:#F8FAFC;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+            <td width="28" style="vertical-align:top;padding-top:1px;">
+              <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">1</div>
+            </td>
+            <td style="font-family:Georgia,serif;font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
+              L'analisi dettagliata delle <strong style="color:#0A0F1E;">5 dimensioni operative</strong> di {company_name}
+            </td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="height:8px;"></td></tr>
+        <tr><td style="padding:14px 20px;background:#F8FAFC;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+            <td width="28" style="vertical-align:top;padding-top:1px;">
+              <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">2</div>
+            </td>
+            <td style="font-family:Georgia,serif;font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
+              I <strong style="color:#0A0F1E;">3 quick win</strong> prioritari personalizzati per {company_name}
+            </td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="height:8px;"></td></tr>
+        <tr><td style="padding:14px 20px;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+            <td width="28" style="vertical-align:top;padding-top:1px;">
+              <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">★</div>
+            </td>
+            <td style="font-family:Georgia,serif;font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
+              Il <strong style="color:#0A0F1E;">piano ROI stimato</strong> — quanto puoi recuperare in tempo e costi
+            </td>
+          </tr></table>
+        </td></tr>
+      </table>
+
+      <p style="margin:0 0 36px;font-family:Georgia,serif;font-size:16px;color:#4B5563;line-height:1.8;">
+        La call è gratuita e dura 30 minuti. Prenota il tuo slot:
+      </p>
+    </td></tr>
+
+    <!-- CTA -->
+    <tr><td style="padding:0 48px 48px;background:#ffffff;text-align:left;">
+      <table cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="background:#0A0F1E;border-radius:10px;padding:18px 36px;">
+          <a href="https://calendly.com/ai-consulting-pmi" style="font-family:Georgia,serif;font-size:16px;font-weight:700;color:#F59E0B;text-decoration:none;letter-spacing:0.02em;">
+            📞 &nbsp;Prenota la call gratuita di 30 minuti →
           </a>
         </td>
       </tr></table>
