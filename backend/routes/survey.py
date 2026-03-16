@@ -150,12 +150,17 @@ async def resend_email(lead_id: str):
         if not scorecard or not survey_data:
             raise HTTPException(400, "Scorecard non ancora generata per questo lead")
         resend.api_key = os.getenv("RESEND_API_KEY")
+        from pdf.certificate import generate_certificate_pdf
+        import base64
+        pdf_bytes = generate_certificate_pdf(scorecard, survey_data)
         params = {
             "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
             "to": [lead["contact_email"]],
             "subject": f"La tua AI Efficiency Scorecard — {lead['company_name']}",
             "html": build_email_html(scorecard, survey_data),
         }
+        if pdf_bytes:
+            params["attachments"] = [{"filename": "scorecard.pdf", "content": base64.b64encode(pdf_bytes).decode()}]
         result_email = resend.Emails.send(params)
         print(f"Email inviata: {result_email}")
         return {"success": True, "message": f"Email inviata a {lead['contact_email']}"}
