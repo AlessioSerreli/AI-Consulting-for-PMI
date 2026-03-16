@@ -354,7 +354,24 @@ async def _send_outreach_impl(lead_id: str) -> dict:
         "outreach_sent_at": datetime.utcnow().isoformat(),
     }).eq("id", lead_id).execute()
 
-    return {"sent_to": owner_email, "survey_url": survey_url}
+    # Inserisce il lead nella Pipeline CRM (leads) se non esiste già
+    existing = supabase.table("leads").select("id").eq("contact_email", owner_email).execute()
+    if existing.data:
+        already_in_pipeline = True
+    else:
+        already_in_pipeline = False
+        try:
+            supabase.table("leads").insert({
+                "company_name": company_name,
+                "contact_name": owner_name,
+                "contact_email": owner_email,
+                "sector": lead.get("category") or "",
+                "status": "new",
+            }).execute()
+        except Exception:
+            pass
+
+    return {"sent_to": owner_email, "survey_url": survey_url, "already_in_pipeline": already_in_pipeline}
 
 
 @router.post("/leads/{lead_id}/outreach")

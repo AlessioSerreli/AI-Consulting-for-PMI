@@ -197,9 +197,13 @@ export default function ProspectingPage() {
     const res = await fetch(`${API_URL}/prospecting/leads/${lead.id}/outreach`, { method: 'POST' }).catch(() => null)
     setOutreachSending(null)
     if (res?.ok) {
+      const data = await res.json()
       const now = new Date().toISOString()
       setSavedLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'contacted', outreach_sent_at: now } : l))
       setNewResults(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'contacted', outreach_sent_at: now } : l))
+      if (data.already_in_pipeline) {
+        alert('Lead già in pipeline')
+      }
     } else {
       alert('Errore invio email. Controlla i log del backend.')
     }
@@ -254,10 +258,14 @@ export default function ProspectingPage() {
   async function submitManualLead() {
     if (!manualForm.company_name.trim() || !manualForm.owner_email.trim()) return
     setManualSubmitting(true)
+    // Omette i campi opzionali vuoti (stringa vuota → non inviato)
+    const payload = Object.fromEntries(
+      Object.entries(manualForm).filter(([, v]) => v.trim() !== '')
+    )
     const res = await fetch(`${API_URL}/prospecting/leads`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(manualForm),
+      body: JSON.stringify(payload),
     }).catch(() => null)
     setManualSubmitting(false)
     if (res?.ok) {
@@ -266,6 +274,8 @@ export default function ProspectingPage() {
       setManualForm({ company_name: '', owner_email: '', owner_name: '', city: '', phone: '', website: '', category: '' })
       setShowManualForm(false)
       setActiveTab('saved')
+    } else {
+      alert('Errore nel salvataggio del lead. Controlla i log del backend.')
     }
   }
 
