@@ -33,6 +33,7 @@ interface ProspectingLead {
   owner_name: string | null
   owner_email: string | null
   owner_position: string | null
+  outreach_sent_at: string | null
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -57,6 +58,11 @@ const REVENUE_OPTIONS = [
   { value: '>10m',   label: '> €10M' },
 ]
 
+function formatOutreachDate(isoDate: string): string {
+  const d = new Date(isoDate)
+  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
+}
+
 export default function ProspectingPage() {
   const [query, setQuery] = useState('')
   const [city, setCity] = useState('')
@@ -71,6 +77,11 @@ export default function ProspectingPage() {
   const [activeTab, setActiveTab] = useState<'search' | 'saved'>('search')
   const [error, setError] = useState<string | null>(null)
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
+
+  const [enrichingAll, setEnrichingAll] = useState(false)
+  const [outreachSending, setOutreachSending] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkOutreaching, setBulkOutreaching] = useState(false)
 
   useEffect(() => {
     loadSavedLeads()
@@ -162,10 +173,6 @@ export default function ProspectingPage() {
     }
   }
 
-  const [enrichingAll, setEnrichingAll] = useState(false)
-  const [outreachSending, setOutreachSending] = useState<string | null>(null)
-  const [outreachSent, setOutreachSent] = useState<Set<string>>(new Set())
-
   async function enrichAll() {
     setEnrichingAll(true)
     await fetch(`${API_URL}/prospecting/leads/enrich-all?limit=20`, { method: 'POST' }).catch(() => null)
@@ -182,13 +189,64 @@ export default function ProspectingPage() {
     const res = await fetch(`${API_URL}/prospecting/leads/${lead.id}/outreach`, { method: 'POST' }).catch(() => null)
     setOutreachSending(null)
     if (res?.ok) {
-      setOutreachSent(prev => new Set(Array.from(prev).concat(lead.id)))
-      setSavedLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'contacted' } : l))
-      setNewResults(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'contacted' } : l))
+      const now = new Date().toISOString()
+      setSavedLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'contacted', outreach_sent_at: now } : l))
+      setNewResults(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'contacted', outreach_sent_at: now } : l))
     } else {
       alert('Errore invio email. Controlla i log del backend.')
     }
   }
+
+  async function sendBulkOutreach() {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    setBulkOutreaching(true)
+
+    const res = await fetch(`${API_URL}/prospecting/leads/bulk-outreach`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead_ids: ids }),
+    }).catch(() => null)
+
+    setBulkOutreaching(false)
+
+    if (res?.ok) {
+      const data = await res.json()
+      const now = new Date().toISOString()
+      const sentSet = new Set<string>(data.sent as string[])
+      setSavedLeads(prev => prev.map(l => sentSet.has(l.id) ? { ...l, status: 'contacted', outreach_sent_at: now } : l))
+      setNewResults(prev => prev.map(l => sentSet.has(l.id) ? { ...l, status: 'contacted', outreach_sent_at: now } : l))
+      setSelectedIds(new Set())
+      if (data.failed?.length > 0) {
+        alert(`Inviato a ${data.sent.length}/${ids.length}. Falliti: ${data.failed.length} (nessuna email o errore SMTP).`)
+      }
+    } else {
+      alert('Errore bulk outreach. Controlla i log del backend.')
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function selectAll(leads: ProspectingLead[]) {
+    const withEmail = leads.filter(l => l.owner_email || l.email).map(l => l.id)
+    setSelectedIds(new Set(withEmail))
+  }
+
+  function deselectAll() {
+    setSelectedIds(new Set())
+  }
+
+  const currentLeads = activeTab === 'search' ? newResults : savedLeads
+  const allWithEmailSelected =
+    currentLeads.filter(l => l.owner_email || l.email).length > 0 &&
+    currentLeads.filter(l => l.owner_email || l.email).every(l => selectedIds.has(l.id))
 
   return (
     <div className="min-h-screen bg-navy-900">
@@ -307,8 +365,33 @@ export default function ProspectingPage() {
           )}
         </div>
 
-        {/* Enrich All */}
-        <div className="flex justify-end mb-3">
+        {/* Toolbar: Enrich All + bulk actions */}
+        <div className="flex items-center justify-between mb-3">
+          {selectedIds.size > 0 ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-400 px-3 py-1.5 bg-navy-800 border border-navy-700 rounded-xl">
+                Selezionati: <span className="text-white font-medium">{selectedIds.size}</span>
+              </span>
+              <button
+                onClick={deselectAll}
+                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white bg-navy-800 border border-navy-700 rounded-xl transition-colors"
+              >
+                Deseleziona
+              </button>
+              <button
+                onClick={sendBulkOutreach}
+                disabled={bulkOutreaching}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-electric-500/10 border border-electric-500/30 hover:bg-electric-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-electric-400 rounded-xl text-sm font-medium transition-colors"
+              >
+                {bulkOutreaching
+                  ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Invio in corso...</>
+                  : <><Mail className="w-3.5 h-3.5" /> Outreach selezionati ({selectedIds.size})</>
+                }
+              </button>
+            </div>
+          ) : (
+            <div />
+          )}
           <button
             onClick={enrichAll}
             disabled={enrichingAll}
@@ -324,13 +407,13 @@ export default function ProspectingPage() {
         {/* Tabs */}
         <div className="flex gap-1 mb-4 bg-navy-800 border border-navy-700 rounded-xl p-1 w-fit">
           <button
-            onClick={() => setActiveTab('search')}
+            onClick={() => { setActiveTab('search'); setSelectedIds(new Set()) }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'search' ? 'bg-navy-700 text-white' : 'text-slate-400 hover:text-white'}`}
           >
             Risultati ricerca {newResults.length > 0 && `(${newResults.length})`}
           </button>
           <button
-            onClick={() => setActiveTab('saved')}
+            onClick={() => { setActiveTab('saved'); setSelectedIds(new Set()) }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'saved' ? 'bg-navy-700 text-white' : 'text-slate-400 hover:text-white'}`}
           >
             Tutti i lead salvati {savedLeads.length > 0 && `(${savedLeads.length})`}
@@ -366,7 +449,17 @@ export default function ProspectingPage() {
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-slate-400 text-sm">{newResults.length} aziende trovate · {searchLabel}</p>
                 </div>
-                <LeadTable leads={newResults} onStatusChange={updateStatus} onEnrich={enrichLead} onOutreach={sendOutreach} outreachSending={outreachSending} outreachSent={outreachSent} />
+                <LeadTable
+                  leads={newResults}
+                  onStatusChange={updateStatus}
+                  onEnrich={enrichLead}
+                  onOutreach={sendOutreach}
+                  outreachSending={outreachSending}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelect}
+                  onSelectAll={() => selectAll(newResults)}
+                  allWithEmailSelected={allWithEmailSelected}
+                />
               </>
             )}
           </div>
@@ -379,7 +472,17 @@ export default function ProspectingPage() {
                 <p>Nessun lead salvato ancora. Avvia una ricerca per iniziare.</p>
               </div>
             ) : (
-              <LeadTable leads={savedLeads} onStatusChange={updateStatus} onEnrich={enrichLead} onOutreach={sendOutreach} outreachSending={outreachSending} outreachSent={outreachSent} />
+              <LeadTable
+                leads={savedLeads}
+                onStatusChange={updateStatus}
+                onEnrich={enrichLead}
+                onOutreach={sendOutreach}
+                outreachSending={outreachSending}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onSelectAll={() => selectAll(savedLeads)}
+                allWithEmailSelected={allWithEmailSelected}
+              />
             )}
           </div>
         )}
@@ -388,13 +491,16 @@ export default function ProspectingPage() {
   )
 }
 
-function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSending, outreachSent }: {
+function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSending, selectedIds, onToggleSelect, onSelectAll, allWithEmailSelected }: {
   leads: ProspectingLead[]
   onStatusChange: (id: string, status: string) => void
   onEnrich: (id: string) => Promise<void>
   onOutreach: (lead: ProspectingLead) => Promise<void>
   outreachSending: string | null
-  outreachSent: Set<string>
+  selectedIds: Set<string>
+  onToggleSelect: (id: string) => void
+  onSelectAll: () => void
+  allWithEmailSelected: boolean
 }) {
   const [enrichingId, setEnrichingId] = useState<string | null>(null)
 
@@ -409,6 +515,15 @@ function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSendin
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-navy-700">
+            <th className="pb-3 pr-3 w-8">
+              <input
+                type="checkbox"
+                checked={allWithEmailSelected}
+                onChange={onSelectAll}
+                title="Seleziona tutti con email"
+                className="w-3.5 h-3.5 accent-electric-500 cursor-pointer"
+              />
+            </th>
             <th className="text-left text-slate-400 font-medium pb-3 pr-4">Azienda</th>
             <th className="text-left text-slate-400 font-medium pb-3 pr-4">Contatti</th>
             <th className="text-left text-slate-400 font-medium pb-3 pr-4">Decision Maker</th>
@@ -419,7 +534,15 @@ function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSendin
         </thead>
         <tbody className="divide-y divide-navy-700">
           {leads.map(lead => (
-            <tr key={lead.id} className={`hover:bg-navy-900/30 transition-colors ${lead.status === 'dismissed' ? 'opacity-40' : ''}`}>
+            <tr key={lead.id} className={`hover:bg-navy-900/30 transition-colors ${lead.status === 'dismissed' ? 'opacity-40' : ''} ${selectedIds.has(lead.id) ? 'bg-electric-500/5' : ''}`}>
+              <td className="py-3 pr-3">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(lead.id)}
+                  onChange={() => onToggleSelect(lead.id)}
+                  className="w-3.5 h-3.5 accent-electric-500 cursor-pointer"
+                />
+              </td>
               <td className="py-3 pr-4">
                 <div className="font-medium text-white">{lead.company_name}</div>
                 <div className="text-slate-500 text-xs flex items-center gap-1 mt-0.5">
@@ -488,9 +611,17 @@ function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSendin
                 )}
               </td>
               <td className="py-3 pr-4">
-                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_CONFIG[lead.status]?.color ?? 'text-slate-400'}`}>
-                  {STATUS_CONFIG[lead.status]?.label ?? lead.status}
-                </span>
+                <div className="space-y-1">
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_CONFIG[lead.status]?.color ?? 'text-slate-400'}`}>
+                    {STATUS_CONFIG[lead.status]?.label ?? lead.status}
+                  </span>
+                  {lead.outreach_sent_at && (
+                    <div className="text-xs text-green-400/70 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Contattato il {formatOutreachDate(lead.outreach_sent_at)}
+                    </div>
+                  )}
+                </div>
               </td>
               <td className="py-3">
                 <div className="flex items-center gap-1">
@@ -499,16 +630,16 @@ function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSendin
                     <button
                       onClick={() => onOutreach(lead)}
                       disabled={outreachSending === lead.id}
-                      title={outreachSent.has(lead.id) ? 'Email inviata' : 'Invia email outreach con link survey'}
+                      title={lead.outreach_sent_at ? 'Email già inviata — reinvia' : 'Invia email outreach con link survey'}
                       className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        outreachSent.has(lead.id)
-                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                        lead.outreach_sent_at
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20'
                           : 'bg-electric-500/10 text-electric-400 border border-electric-500/20 hover:bg-electric-500/20'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {outreachSending === lead.id
                         ? <><RefreshCw className="w-3 h-3 animate-spin" /> Invio...</>
-                        : outreachSent.has(lead.id)
+                        : lead.outreach_sent_at
                           ? <><CheckCircle className="w-3 h-3" /> Inviata</>
                           : <><Mail className="w-3 h-3" /> Outreach</>
                       }

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 import os
 import httpx
 from supabase import create_client
@@ -52,6 +53,10 @@ class SearchRequest(BaseModel):
 class LeadStatusUpdate(BaseModel):
     status: str
     notes: Optional[str] = None
+
+
+class BulkOutreachRequest(BaseModel):
+    lead_ids: List[str]
 
 
 @router.post("/run")
@@ -188,28 +193,26 @@ async def update_prospecting_lead(lead_id: str, update: LeadStatusUpdate):
     return result.data[0] if result.data else {}
 
 
-@router.post("/leads/{lead_id}/outreach")
-async def send_outreach(lead_id: str):
-    """Invia email di outreach personalizzata con link alla survey pre-compilata."""
+async def _send_outreach_impl(lead_id: str) -> dict:
+    """Logica core: invia email outreach + aggiorna DB. Raises Exception on failure."""
     resend_key = os.getenv("RESEND_API_KEY")
     if not resend_key:
-        raise HTTPException(500, "RESEND_API_KEY non configurata")
+        raise ValueError("RESEND_API_KEY non configurata")
 
     supabase = get_supabase()
     result = supabase.table("prospecting_leads").select("*").eq("id", lead_id).execute()
     if not result.data:
-        raise HTTPException(404, "Lead non trovato")
+        raise ValueError(f"Lead {lead_id} non trovato")
 
     lead = result.data[0]
-    owner_name    = lead.get("owner_name") or lead.get("company_name", "")
-    owner_email   = lead.get("owner_email") or lead.get("email", "")
-    company_name  = lead.get("company_name", "")
-    first_name    = owner_name.split()[0] if owner_name else "Imprenditore"
+    owner_name   = lead.get("owner_name") or lead.get("company_name", "")
+    owner_email  = lead.get("owner_email") or lead.get("email", "")
+    company_name = lead.get("company_name", "")
+    first_name   = owner_name.split()[0] if owner_name else "Imprenditore"
 
     if not owner_email:
-        raise HTTPException(400, "Nessuna email disponibile per questo lead (esegui prima l'enrich)")
+        raise ValueError("Nessuna email disponibile (esegui prima l'enrich)")
 
-    # URL survey pre-compilata
     from urllib.parse import quote
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
     survey_url = (
@@ -299,7 +302,7 @@ async def send_outreach(lead_id: str):
 
   <tr><td style="padding:0 48px;"><div style="height:1px;background:#E5E7EB;"></div></td></tr>
   <tr><td style="padding:36px 48px;background:#fff;">
-    <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#0A0F1E;">Luigi Negro</p>
+    <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#0A0F1E;">Luigi Negro &amp; Alessio Serreli</p>
     <p style="margin:0 0 16px;font-size:13px;color:#6B7280;text-transform:uppercase;letter-spacing:0.05em;">AI Expert · Ottimizzazione Processi PMI</p>
     <table cellpadding="0" cellspacing="0" border="0"><tr>
       <td style="padding-right:24px;"><a href="tel:+393299576151" style="font-size:14px;color:#4B5563;text-decoration:none;">📞 +39 329 957 6151</a></td>
@@ -318,20 +321,46 @@ async def send_outreach(lead_id: str):
 
     import resend
     resend.api_key = resend_key
+    resend.Emails.send({
+        "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
+        "to": [owner_email],
+        "subject": f"Ho analizzato {company_name} — diagnosi gratuita per te",
+        "html": html,
+    })
+
+    supabase.table("prospecting_leads").update({
+        "status": "contacted",
+        "outreach_sent_at": datetime.utcnow().isoformat(),
+    }).eq("id", lead_id).execute()
+
+    return {"sent_to": owner_email, "survey_url": survey_url}
+
+
+@router.post("/leads/{lead_id}/outreach")
+async def send_outreach(lead_id: str):
+    """Invia email di outreach personalizzata con link alla survey pre-compilata."""
     try:
-        resend.Emails.send({
-            "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
-            "to": [owner_email],
-            "subject": f"Ho analizzato {company_name} — diagnosi gratuita per te",
-            "html": html,
-        })
+        result = await _send_outreach_impl(lead_id)
+        return {"success": True, **result}
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "non trovato" in msg else 400 if "Nessuna email" in msg else 500
+        raise HTTPException(code, msg)
     except Exception as e:
         raise HTTPException(502, f"Errore invio email: {e}")
 
-    # Aggiorna status prospecting lead
-    supabase.table("prospecting_leads").update({"status": "contacted"}).eq("id", lead_id).execute()
 
-    return {"success": True, "sent_to": owner_email, "survey_url": survey_url}
+@router.post("/leads/bulk-outreach")
+async def bulk_outreach(request: BulkOutreachRequest):
+    """Invia email outreach a più lead in una sola chiamata."""
+    results: dict = {"sent": [], "failed": []}
+    for lead_id in request.lead_ids:
+        try:
+            await _send_outreach_impl(lead_id)
+            results["sent"].append(lead_id)
+        except Exception as e:
+            results["failed"].append({"id": lead_id, "error": str(e)})
+    return results
 
 
 import re as _re
