@@ -2,7 +2,10 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 import os
+import logging
 from supabase import create_client
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -86,7 +89,7 @@ async def send_teaser_email(scorecard: dict, survey_data: dict):
         import resend
         resend.api_key = os.getenv("RESEND_API_KEY")
         if not resend.api_key:
-            print("RESEND_API_KEY non configurata — teaser email non inviata")
+            logger.warning("RESEND_API_KEY non configurata — teaser email non inviata")
             return
         params = {
             "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
@@ -95,16 +98,20 @@ async def send_teaser_email(scorecard: dict, survey_data: dict):
             "html": build_teaser_email_html(scorecard, survey_data),
         }
         result = resend.Emails.send(params)
-        print(f"Teaser email inviata: {result}")
+        logger.info("Teaser email inviata: %s", result)
     except Exception as e:
-        print(f"Errore invio teaser email: {e}")
+        logger.error("Errore invio teaser email: %s", e)
 
 async def generate_scorecard_async(lead_id: str, survey_data: dict):
     try:
+        import base64
         from ai.scoring import generate_scorecard
         from pdf.certificate import generate_certificate_pdf
         scorecard = await generate_scorecard(survey_data)
         pdf_bytes = generate_certificate_pdf(scorecard, survey_data)
+
+        if pdf_bytes:
+            scorecard["_pdf_b64"] = base64.b64encode(pdf_bytes).decode()
 
         supabase = get_supabase()
         supabase.table("leads").update({
@@ -115,7 +122,7 @@ async def generate_scorecard_async(lead_id: str, survey_data: dict):
 
         await send_teaser_email(scorecard, survey_data)
     except Exception as e:
-        print(f"Error generating scorecard: {e}")
+        logger.error("Error generating scorecard for lead %s: %s", lead_id, e)
 
 @router.post("/survey/resend-email/{lead_id}")
 async def resend_email(lead_id: str):
@@ -131,24 +138,19 @@ async def resend_email(lead_id: str):
         if not scorecard or not survey_data:
             raise HTTPException(400, "Scorecard non ancora generata per questo lead")
         resend.api_key = os.getenv("RESEND_API_KEY")
-        from pdf.certificate import generate_certificate_pdf
-        import base64
-        pdf_bytes = generate_certificate_pdf(scorecard, survey_data)
         params = {
             "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
             "to": [lead["contact_email"]],
-            "subject": f"La tua AI Efficiency Scorecard — {lead['company_name']}",
-            "html": build_email_html(scorecard, survey_data),
+            "subject": f"Il tuo punteggio AI è pronto — {lead['company_name']}",
+            "html": build_teaser_email_html(scorecard, survey_data),
         }
-        if pdf_bytes:
-            params["attachments"] = [{"filename": "scorecard.pdf", "content": base64.b64encode(pdf_bytes).decode()}]
         result_email = resend.Emails.send(params)
-        print(f"Email inviata: {result_email}")
+        logger.info("Email inviata a %s: %s", lead['contact_email'], result_email)
         return {"success": True, "message": f"Email inviata a {lead['contact_email']}"}
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Errore resend-email: {e}")
+        logger.error("Errore resend-email lead %s: %s", lead_id, e)
         raise HTTPException(500, str(e))
 
 @router.post("/survey/retry/{lead_id}")
@@ -297,7 +299,7 @@ def build_teaser_email_html(scorecard: dict, survey_data: dict) -> str:
     executive_summary = scorecard.get('executive_summary', '')
     if executive_summary:
         sentences = [s.strip() for s in executive_summary.replace('!', '.').replace('?', '.').split('.') if s.strip()]
-        executive_summary_short = '. '.join(sentences[:2]) + ('.' if sentences else '')
+        executive_summary_short = sentences[0] + '.' if sentences else ''
     else:
         executive_summary_short = ''
     return f"""<!DOCTYPE html>
@@ -327,7 +329,13 @@ def build_teaser_email_html(scorecard: dict, survey_data: dict) -> str:
         Abbiamo analizzato ogni risposta della tua diagnosi — processo per processo, inefficienza per inefficienza.<br>
         <strong style="color:#0A0F1E;">{company_name}</strong> ottiene un punteggio di <strong style="color:{score_color};">{score}/100</strong>: livello <strong>{level_label}</strong>.
       </p>
-      {'<p style="margin:0 0 24px;font-family:Georgia,serif;font-size:16px;color:#4B5563;line-height:1.8;">' + executive_summary_short + '</p>' if executive_summary_short else ''}
+      {'''<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 28px;">
+        <tr><td style="padding:16px 20px;background:#FFFBEB;border-left:4px solid #F59E0B;border-radius:0 8px 8px 0;">
+          <p style="margin:0;font-family:Georgia,serif;font-size:14px;color:#78350F;line-height:1.7;font-style:italic;">
+            &ldquo;''' + executive_summary_short + '''&rdquo;
+          </p>
+        </td></tr>
+      </table>''' if executive_summary_short else ''}
 
       <div style="height:1px;background:#E5E7EB;margin:32px 0;"></div>
 

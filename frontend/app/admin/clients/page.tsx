@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Brain, Users, TrendingUp, CheckCircle, Target, FileText, Save } from 'lucide-react'
 
@@ -52,37 +52,63 @@ function ClientCard({ client, apiUrl }: { client: any; apiUrl: string }) {
   const [savingValue, setSavingValue] = useState(false)
   const [savedNotes, setSavedNotes] = useState(false)
   const [savedValue, setSavedValue] = useState(false)
-  const notesRef = useRef<HTMLTextAreaElement>(null)
+  const [errorNotes, setErrorNotes] = useState(false)
+  const [errorValue, setErrorValue] = useState(false)
+  const [valueInvalid, setValueInvalid] = useState(false)
 
   async function patch(data: Record<string, unknown>) {
-    await fetch(`${apiUrl}/crm/leads/${client.id}`, {
+    const res = await fetch(`${apiUrl}/crm/leads/${client.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
+    if (!res.ok) throw new Error(`PATCH failed: ${res.status}`)
   }
 
   async function handlePhaseClick(key: string) {
+    const prev = phase
     setPhase(key)
-    await patch({ project_phase: key })
+    try {
+      await patch({ project_phase: key })
+    } catch {
+      setPhase(prev)
+    }
   }
 
   async function handleSaveNotes() {
     setSavingNotes(true)
-    await patch({ notes })
-    setSavingNotes(false)
-    setSavedNotes(true)
-    setTimeout(() => setSavedNotes(false), 2000)
+    setErrorNotes(false)
+    try {
+      await patch({ notes })
+      setSavedNotes(true)
+      setTimeout(() => setSavedNotes(false), 2000)
+    } catch {
+      setErrorNotes(true)
+      setTimeout(() => setErrorNotes(false), 3000)
+    } finally {
+      setSavingNotes(false)
+    }
   }
 
   async function handleSaveValue() {
+    setValueInvalid(false)
     const val = contractValue === '' ? null : parseFloat(contractValue)
-    if (contractValue !== '' && isNaN(val as number)) return
+    if (contractValue !== '' && isNaN(val as number)) {
+      setValueInvalid(true)
+      return
+    }
     setSavingValue(true)
-    await patch({ estimated_value: val })
-    setSavingValue(false)
-    setSavedValue(true)
-    setTimeout(() => setSavedValue(false), 2000)
+    setErrorValue(false)
+    try {
+      await patch({ estimated_value: val })
+      setSavedValue(true)
+      setTimeout(() => setSavedValue(false), 2000)
+    } catch {
+      setErrorValue(true)
+      setTimeout(() => setErrorValue(false), 3000)
+    } finally {
+      setSavingValue(false)
+    }
   }
 
   function openPdf() {
@@ -140,7 +166,6 @@ function ClientCard({ client, apiUrl }: { client: any; apiUrl: string }) {
         <div>
           <label className="block text-xs font-mono text-slate-500 mb-1.5 uppercase tracking-widest">Note</label>
           <textarea
-            ref={notesRef}
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={3}
@@ -153,7 +178,7 @@ function ClientCard({ client, apiUrl }: { client: any; apiUrl: string }) {
             className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-navy-700 border border-navy-600 text-slate-400 hover:text-electric-400 hover:border-electric-500/40 transition-colors disabled:opacity-50"
           >
             <Save className="w-3 h-3" />
-            {savingNotes ? 'Salvataggio…' : savedNotes ? 'Salvato ✓' : 'Salva note'}
+            {savingNotes ? 'Salvataggio…' : errorNotes ? 'Errore ✗' : savedNotes ? 'Salvato ✓' : 'Salva note'}
           </button>
         </div>
 
@@ -166,9 +191,9 @@ function ClientCard({ client, apiUrl }: { client: any; apiUrl: string }) {
               <input
                 type="number"
                 value={contractValue}
-                onChange={e => setContractValue(e.target.value)}
+                onChange={e => { setContractValue(e.target.value); setValueInvalid(false) }}
                 placeholder="0"
-                className="w-full bg-navy-900 border border-navy-600 rounded-xl pl-7 pr-3 py-2 text-sm text-slate-300 placeholder:text-slate-600 font-mono focus:outline-none focus:border-electric-500/40 transition-colors"
+                className={`w-full bg-navy-900 border rounded-xl pl-7 pr-3 py-2 text-sm text-slate-300 placeholder:text-slate-600 font-mono focus:outline-none transition-colors ${valueInvalid ? 'border-red-500/60' : 'border-navy-600 focus:border-electric-500/40'}`}
               />
             </div>
           </div>
@@ -178,7 +203,7 @@ function ClientCard({ client, apiUrl }: { client: any; apiUrl: string }) {
             className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-navy-700 border border-navy-600 text-slate-400 hover:text-electric-400 hover:border-electric-500/40 transition-colors disabled:opacity-50"
           >
             <Save className="w-3 h-3" />
-            {savingValue ? 'Salvataggio…' : savedValue ? 'Salvato ✓' : 'Salva valore'}
+            {savingValue ? 'Salvataggio…' : errorValue ? 'Errore ✗' : valueInvalid ? 'Numero non valido' : savedValue ? 'Salvato ✓' : 'Salva valore'}
           </button>
         </div>
       </div>
@@ -189,13 +214,14 @@ function ClientCard({ client, apiUrl }: { client: any; apiUrl: string }) {
 export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
   useEffect(() => {
     fetch(`${apiUrl}/crm/leads?status=client`)
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(data => { setClients(Array.isArray(data) ? data : []); setLoading(false) })
-      .catch(() => setLoading(false))
+      .catch(() => { setFetchError(true); setLoading(false) })
   }, [apiUrl])
 
   return (
@@ -210,6 +236,11 @@ export default function ClientsPage() {
 
         {loading ? (
           <div className="space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="h-48 bg-navy-800 rounded-2xl animate-pulse" />)}</div>
+        ) : fetchError ? (
+          <div className="text-center py-24 text-slate-500">
+            <p className="font-display text-3xl text-red-600/50 tracking-wide">ERRORE DI CONNESSIONE</p>
+            <p className="text-sm font-mono mt-3">Impossibile caricare i clienti. Verifica che il backend sia attivo.</p>
+          </div>
         ) : clients.length === 0 ? (
           <div className="text-center py-24 text-slate-500">
             <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-30" />

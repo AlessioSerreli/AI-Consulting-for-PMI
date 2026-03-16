@@ -2,8 +2,10 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional
-import os, base64
+import os, base64, re, logging
 from supabase import create_client
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/crm")
 
@@ -65,11 +67,12 @@ async def get_lead_pdf(lead_id: str):
         if not pdf_b64:
             raise HTTPException(404, "PDF non ancora generato per questo lead")
         pdf_bytes = base64.b64decode(pdf_b64)
-        company = result.data.get("company_name", "scorecard").replace(" ", "_")
+        raw = result.data.get("company_name", "scorecard")
+        company = re.sub(r'[^\w\-]', '_', raw)[:60]
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
-            headers={"Content-Disposition": f'inline; filename="{company}_scorecard.pdf"'},
+            headers={"Content-Disposition": f"inline; filename={company}_scorecard.pdf"},
         )
     except HTTPException:
         raise
@@ -123,5 +126,6 @@ async def get_stats():
             "conversion_rate": conversion_rate,
             "active_clients": clients,
         }
-    except Exception:
+    except Exception as e:
+        logger.error("Errore stats: %s", e)
         return {"total_leads": 0, "surveys_today": 0, "conversion_rate": 0, "active_clients": 0}
