@@ -25,9 +25,38 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 - [x] BLOCCO 3d — Hunter.io Enrichment: email e decision maker automatici per ogni lead
 - [x] BLOCCO 3e — DDG Enrichment + Outreach: scraping email via sito/DuckDuckGo, email outreach personalizzata con link survey pre-compilata
 - [x] BLOCCO 3f — Clients Page interattiva: selector fasi, note, PDF, valore contratto + teaser email scorecard
+- [x] BLOCCO 3g — Manual Lead Entry + Outreach→Pipeline: inserimento lead manuale + auto-insert in CRM al primo outreach
 - [ ] BLOCCO 4 — Core AI Engine (post-MVP)
 
-## Ultimo avanzamento (2026-03-16) — Clients Page interattiva + Teaser Email + Code Review ✅
+## Ultimo avanzamento (2026-03-16) — Manual Lead Entry + Outreach→Pipeline ✅
+
+### Fatto in questa sessione
+
+#### BLOCCO 3g — Manual Lead Entry + Outreach → Pipeline CRM
+
+**`backend/routes/prospecting.py`**
+- Nuovo modello `ManualLeadCreate` (company_name + owner_email obbligatori, resto opzionale)
+- Nuovo endpoint `POST /prospecting/leads` — inserisce lead manuale con `source='manual'`, `status='new'`
+- `_send_outreach_impl`: dopo invio email outreach, inserisce automaticamente il lead in `leads` (Pipeline CRM)
+- Check anti-duplicato per email: se già presente in pipeline, risponde con `already_in_pipeline: true` (non inserisce di nuovo)
+
+**`backend/main.py`**
+- CORS: aggiunte porte 3003, 3004, 3005 per sviluppo locale (Next.js scala porta se occupata)
+
+**`frontend/app/admin/prospecting/page.tsx`**
+- Pulsante "+ Aggiungi lead manuale" nella toolbar (toggle, si illumina quando aperto)
+- Form espandibile con campi: Azienda\*, Email\*, Nome referente, Città, Telefono, Sito web, Categoria
+- Campi opzionali vuoti omessi dal payload (no stringhe vuote in DB)
+- Feedback errore se il salvataggio fallisce
+- Badge "Manuale" grigio sotto il nome azienda per lead con `source === 'manual'`
+- Popup "Lead già in pipeline" se l'outreach trova l'email già presente nella Pipeline
+
+#### Migrazione Supabase eseguita in sessione precedente
+```sql
+ALTER TABLE prospecting_leads ADD COLUMN IF NOT EXISTS source text DEFAULT 'scraping';
+```
+
+### Note importanti porta backend
 
 ### Fatto in questa sessione
 
@@ -359,10 +388,10 @@ git pull origin main
 ---
 
 ## Punto di ripresa (prossima sessione)
-Il flusso end-to-end funziona completamente: prospecting → enrichment → outreach → survey → scorecard + teaser email → CRM (clients page interattiva con fasi, note, PDF, valore contratto).
+Il flusso end-to-end funziona completamente: prospecting (scraping + manuale) → enrichment → outreach → auto-insert Pipeline CRM → survey → scorecard + teaser email → CRM (clients page interattiva con fasi, note, PDF, valore contratto).
 
 ### Azione immediata richiesta
-**Eseguire la migrazione Supabase** (1 riga SQL) per attivare il campo `project_phase` sui clienti:
+**Eseguire la migrazione Supabase** (se non già fatto) per attivare il campo `project_phase` sui clienti:
 ```sql
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS project_phase text DEFAULT 'audit';
 ```
