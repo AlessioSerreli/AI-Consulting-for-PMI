@@ -635,4 +635,6 @@ def generate_certificate_pdf(scorecard: dict, survey_data: dict):
         from weasyprint import HTML
         return HTML(string=html).write_pdf()
     except ImportError:
-        return html.encode("utf-8")
+        # WeasyPrint non disponibile (richiede dipendenze di sistema)
+        # Ritorna b"" — l'email verrà inviata senza allegato PDF
+        return b""

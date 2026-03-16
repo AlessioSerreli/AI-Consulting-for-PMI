@@ -201,6 +201,18 @@ async def retry_pending_scorecards(background_tasks: BackgroundTasks):
     except Exception as e:
         raise HTTPException(500, str(e))
 
+def _qw_label(win) -> str:
+    """Estrae il testo da un quick win (dict con title/tool/impact oppure stringa legacy)."""
+    if isinstance(win, dict):
+        title  = win.get("title", "")
+        tool   = win.get("tool", "")
+        impact = win.get("impact", "")
+        parts = [title]
+        if tool:   parts.append(f"<span style='color:#F59E0B;'>⚡ {tool}</span>")
+        if impact: parts.append(f"<span style='color:#6B7280;font-size:13px;'>{impact}</span>")
+        return "<br>".join(p for p in parts if p)
+    return str(win)
+
 def build_email_html(scorecard: dict, survey_data: dict) -> str:
     quick_wins_html = "".join(
         f'<tr><td style="height:8px;"></td></tr>'
@@ -209,7 +221,7 @@ def build_email_html(scorecard: dict, survey_data: dict) -> str:
         f'<td width="28" style="vertical-align:top;padding-top:1px;">'
         f'<div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">{i+1}</div>'
         f'</td>'
-        f'<td style="font-family:Georgia,serif;font-size:15px;color:#374151;line-height:1.6;padding-left:12px;"><strong style="color:#0A0F1E;">{win}</strong></td>'
+        f'<td style="font-family:Georgia,serif;font-size:15px;color:#374151;line-height:1.6;padding-left:12px;"><strong style="color:#0A0F1E;">{_qw_label(win)}</strong></td>'
         f'</tr></table></td></tr>'
         for i, win in enumerate(scorecard.get('quick_wins', []))
     )
