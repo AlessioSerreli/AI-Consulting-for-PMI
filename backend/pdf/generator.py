@@ -120,7 +120,7 @@ def build_pdf_html(scorecard: dict, survey_data: dict) -> str:
 
     <div class="footer">
         <p>AI Efficiency Scorecard generata da AIConsulting PMI · Riservato e confidenziale · aiconsultingpmi.it</p>
-        <p style="margin-top: 4px;">Per discutere i risultati: <a href="https://calendly.com/ai-consulting-pmi" style="color: #2563EB;">Prenota la tua call gratuita →</a></p>
+        <p style="margin-top: 4px;">Per discutere i risultati: <a href="https://calendly.com/aiconsultingpmi/30min" style="color: #2563EB;">Prenota la tua call gratuita →</a></p>
     </div>
     </body>
     </html>

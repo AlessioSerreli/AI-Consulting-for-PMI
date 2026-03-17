@@ -50,7 +50,7 @@ export default function ThankYouPage() {
         </div>
 
         <a
-          href="https://calendly.com/ai-consulting-pmi"
+          href="https://calendly.com/aiconsultingpmi/30min"
           target="_blank"
           rel="noopener noreferrer"
           className="block bg-electric-500 hover:bg-electric-600 text-navy-900 px-8 py-4 rounded-xl font-bold transition-all hover:scale-105 mb-4"

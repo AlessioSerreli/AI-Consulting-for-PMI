@@ -391,10 +391,7 @@ git pull origin main
 Il flusso end-to-end funziona completamente: prospecting (scraping + manuale) → enrichment → outreach → auto-insert Pipeline CRM → survey → scorecard + teaser email → CRM (clients page interattiva con fasi, note, PDF, valore contratto).
 
 ### Azione immediata richiesta
-**Eseguire la migrazione Supabase** (se non già fatto) per attivare il campo `project_phase` sui clienti:
-```sql
-ALTER TABLE leads ADD COLUMN IF NOT EXISTS project_phase text DEFAULT 'audit';
-```
+~~**Eseguire la migrazione Supabase**~~ ✅ Migrazione `project_phase` già eseguita (confermato 2026-03-17)
 
 ### Prossimi step prioritari
 1. **Deploy**: frontend su Vercel, backend su Railway/Render
