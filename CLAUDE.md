@@ -28,7 +28,37 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 - [x] BLOCCO 3g — Manual Lead Entry + Outreach→Pipeline: inserimento lead manuale + auto-insert in CRM al primo outreach
 - [ ] BLOCCO 4 — Core AI Engine (post-MVP)
 
-## Ultimo avanzamento (2026-03-16) — Manual Lead Entry + Outreach→Pipeline ✅
+## Ultimo avanzamento (2026-03-17) — Deploy setup + Calendly + Decisioni brand ✅
+
+### Fatto in questa sessione
+
+#### Decisioni prese
+- **Calendly**: creato account condiviso `aiconsultingpmi@gmail.com` → link reale `https://calendly.com/aiconsultingpmi/30min`
+- **Brand**: confermato "AI.PMI" (già presente nel frontend)
+- **Lingua survey**: solo italiano
+- **Migrazione Supabase**: confermata eseguita — colonna `project_phase` presente in `leads`
+
+#### Link Calendly aggiornato in tutti i file
+- `backend/email_templates/confirmation.html`
+- `backend/routes/survey.py` (2 occorrenze)
+- `backend/pdf/generator.py`
+- `frontend/app/thank-you/page.tsx`
+
+#### Deploy Railway — in corso ⚙️
+- Progetto Railway creato: `df3c05e9-78c3-4182-89db-3e4089a92c92`
+- Root directory impostata su `backend/`
+- Start command: `python -m uvicorn main:app --host 0.0.0.0 --port $PORT`
+- Variabili d'ambiente configurate su Railway (tutte le 7 chiavi)
+- Creato `backend/nixpacks.toml` con dipendenze sistema per cairo/pango/weasyprint
+- **Deploy ancora fallito** — errore da investigare alla prossima sessione (pycairo/cairo build error)
+
+#### Prossimo tentativo deploy
+Il `nixpacks.toml` è stato pushato ma il deploy non ha ancora avuto successo.
+Alla prossima sessione: controllare log Railway e risolvere il build error.
+
+---
+
+## Storico sessione precedente (2026-03-16) — Manual Lead Entry + Outreach→Pipeline ✅
 
 ### Fatto in questa sessione
 
@@ -388,16 +418,26 @@ git pull origin main
 ---
 
 ## Punto di ripresa (prossima sessione)
-Il flusso end-to-end funziona completamente: prospecting (scraping + manuale) → enrichment → outreach → auto-insert Pipeline CRM → survey → scorecard + teaser email → CRM (clients page interattiva con fasi, note, PDF, valore contratto).
+
+### Stato attuale
+- ✅ Migrazione Supabase `project_phase` eseguita
+- ✅ Calendly link reale: `https://calendly.com/aiconsultingpmi/30min` (aggiornato in tutti i file)
+- ✅ Brand: "AI.PMI" confermato
+- ✅ Lingua: italiano
+- ⚙️ Deploy Railway backend: progetto creato, variabili configurate, `nixpacks.toml` aggiunto — **build ancora fallisce**
 
 ### Azione immediata richiesta
-~~**Eseguire la migrazione Supabase**~~ ✅ Migrazione `project_phase` già eseguita (confermato 2026-03-17)
+**Risolvere il build error su Railway** — il deploy del backend fallisce per errore cairo/pycairo.
+Incollare il log aggiornato e investigare la causa. Potrebbe servire:
+- Aggiornare `nixpacks.toml` con dipendenze diverse
+- Rimuovere `xhtml2pdf` da `requirements.txt` (su Linux WeasyPrint è sufficiente, xhtml2pdf serve solo su Windows)
 
 ### Prossimi step prioritari
-1. **Deploy**: frontend su Vercel, backend su Railway/Render
-2. **Dominio**: verificare `aiconsultingpmi.it` su Resend → aggiornare `FROM_EMAIL` nel `.env` di produzione
-3. **Calendly**: sostituire il link placeholder in `thank-you/page.tsx` e nelle email con il link reale
-4. **Decisioni da prendere**: nome brand, pricing, lingua survey
+1. **Fix deploy backend** su Railway (risolvere errore cairo/pycairo)
+2. **Deploy frontend** su Vercel (dopo che il backend è up)
+3. **Aggiornare `FRONTEND_URL`** su Railway con URL Vercel reale
+4. **Dominio**: verificare `aiconsultingpmi.it` su Resend → aggiornare `FROM_EMAIL` nel `.env` Railway
+5. **Pricing**: decidere prezzi per le 4 fasi
 
 ## Note operative
 - Avviare backend: `cd backend` poi `python -m uvicorn main:app --port 8002` (usare cmd, non PowerShell)
