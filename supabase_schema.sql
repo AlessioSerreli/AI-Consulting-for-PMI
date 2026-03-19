@@ -21,8 +21,15 @@ CREATE TABLE IF NOT EXISTS leads (
 CREATE INDEX IF NOT EXISTS leads_status_idx ON leads(status);
 CREATE INDEX IF NOT EXISTS leads_created_at_idx ON leads(created_at DESC);
 
--- RLS: disabilita per ora (ambiente dev), da abilitare in prod
-ALTER TABLE leads DISABLE ROW LEVEL SECURITY;
+-- RLS: abilitato — service_role bypassa RLS automaticamente (backend sicuro)
+-- anon/authenticated bloccati completamente (nessun accesso diretto da frontend)
+ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "block_anon_leads" ON leads
+  AS RESTRICTIVE
+  FOR ALL
+  TO anon, authenticated
+  USING (false);
 
 -- -------------------------------------------------------
 -- Tabella prospecting_leads: lead trovati via Apify scraping
@@ -64,4 +71,10 @@ CREATE INDEX IF NOT EXISTS prospecting_leads_status_idx ON prospecting_leads(sta
 CREATE INDEX IF NOT EXISTS prospecting_leads_created_at_idx ON prospecting_leads(created_at DESC);
 CREATE INDEX IF NOT EXISTS prospecting_leads_run_idx ON prospecting_leads(apify_run_id);
 
-ALTER TABLE prospecting_leads DISABLE ROW LEVEL SECURITY;
+ALTER TABLE prospecting_leads ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "block_anon_prospecting" ON prospecting_leads
+  AS RESTRICTIVE
+  FOR ALL
+  TO anon, authenticated
+  USING (false);
