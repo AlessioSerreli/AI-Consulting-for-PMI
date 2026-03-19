@@ -26,9 +26,28 @@ MVP Fase 1: Survey dinamica + Scorecard AI generata + CRM admin.
 - [x] BLOCCO 3e — DDG Enrichment + Outreach: scraping email via sito/DuckDuckGo, email outreach personalizzata con link survey pre-compilata
 - [x] BLOCCO 3f — Clients Page interattiva: selector fasi, note, PDF, valore contratto + teaser email scorecard
 - [x] BLOCCO 3g — Manual Lead Entry + Outreach→Pipeline: inserimento lead manuale + auto-insert in CRM al primo outreach
+- [x] SECURITY — RLS abilitato su Supabase: leads + prospecting_leads bloccate ad anon, verificato via API
 - [ ] BLOCCO 4 — Core AI Engine (post-MVP)
 
-## Ultimo avanzamento (2026-03-17) — Deploy setup + Calendly + Decisioni brand ✅
+## Ultimo avanzamento (2026-03-19) — Security hardening Supabase ✅
+
+### Fatto in questa sessione
+
+#### Security audit + RLS fix
+- **Problema**: Supabase Security Advisor segnalava RLS disabilitato su entrambe le tabelle
+- **Fix**: Abilitato RLS su `leads` e `prospecting_leads` + policy `RESTRICTIVE` che blocca anon/authenticated completamente
+- **Verificato via API**: anon key restituisce `[]` su entrambe le tabelle — nessun dato esposto
+- **Backend intatto**: service_role key bypassa RLS per design — tutte le chiamate FastAPI continuano a funzionare
+- **Schema aggiornato**: `supabase_schema.sql` riflette il nuovo stato (RLS enabled + policy)
+- **Chiavi API**: mai commitmate nel repo — `.gitignore` corretto, solo `.example` tracciati
+
+#### Security TODO pre-launch (da fare prima del go-live)
+- [ ] Auth su route `/admin/*` — attualmente accessibili senza login (Supabase Auth + JWT validation FastAPI)
+- [ ] Rate limiting su `/survey` — endpoint pubblico (slowapi o middleware Railway)
+
+---
+
+## Sessione precedente (2026-03-17) — Deploy setup + Calendly + Decisioni brand ✅
 
 ### Fatto in questa sessione
 
@@ -424,6 +443,7 @@ git pull origin main
 - ✅ Calendly link reale: `https://calendly.com/aiconsultingpmi/30min` (aggiornato in tutti i file)
 - ✅ Brand: "AI.PMI" confermato
 - ✅ Lingua: italiano
+- ✅ RLS Supabase abilitato su `leads` e `prospecting_leads` — anon bloccato, verificato
 - ⚙️ Deploy Railway backend: progetto creato, variabili configurate, `nixpacks.toml` aggiunto — **build ancora fallisce**
 
 ### Azione immediata richiesta
@@ -438,6 +458,7 @@ Incollare il log aggiornato e investigare la causa. Potrebbe servire:
 3. **Aggiornare `FRONTEND_URL`** su Railway con URL Vercel reale
 4. **Dominio**: verificare `aiconsultingpmi.it` su Resend → aggiornare `FROM_EMAIL` nel `.env` Railway
 5. **Pricing**: decidere prezzi per le 4 fasi
+6. **Security pre-launch**: auth su `/admin/*` + rate limiting su `/survey`
 
 ## Note operative
 - Avviare backend: `cd backend` poi `python -m uvicorn main:app --port 8002` (usare cmd, non PowerShell)
