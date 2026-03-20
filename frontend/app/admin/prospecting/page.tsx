@@ -518,9 +518,9 @@ export default function ProspectingPage() {
   })
 
   const currentLeads = activeTab === 'search' ? newResults : filteredSavedLeads
-  const allWithEmailSelected =
-    currentLeads.filter(l => l.owner_email || l.email).length > 0 &&
-    currentLeads.filter(l => l.owner_email || l.email).every(l => selectedIds.has(l.id))
+  const leadsWithEmail = currentLeads.filter(l => l.owner_email || l.email)
+  const allWithEmailSelected = leadsWithEmail.length > 0 && leadsWithEmail.every(l => selectedIds.has(l.id))
+  const someWithEmailSelected = leadsWithEmail.some(l => selectedIds.has(l.id)) && !allWithEmailSelected
 
   return (
     <div className="min-h-screen bg-navy-900">
@@ -620,6 +620,7 @@ export default function ProspectingPage() {
                 <option value={50}>50</option>
                 <option value={100}>100</option>
                 <option value={200}>200</option>
+                <option value={1000}>Senza limite</option>
               </select>
             </div>
           </div>
@@ -871,8 +872,9 @@ export default function ProspectingPage() {
                   outreachSending={outreachSending}
                   selectedIds={selectedIds}
                   onToggleSelect={toggleSelect}
-                  onSelectAll={() => selectAll(newResults)}
+                  onSelectAll={() => allWithEmailSelected ? deselectAll() : selectAll(newResults)}
                   allWithEmailSelected={allWithEmailSelected}
+                  someSelected={someWithEmailSelected}
                 />
               </>
             )}
@@ -946,8 +948,9 @@ export default function ProspectingPage() {
                 outreachSending={outreachSending}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
-                onSelectAll={() => selectAll(savedLeads)}
+                onSelectAll={() => allWithEmailSelected ? deselectAll() : selectAll(filteredSavedLeads)}
                 allWithEmailSelected={allWithEmailSelected}
+                someSelected={someWithEmailSelected}
               />
             )}
           </div>
@@ -957,7 +960,7 @@ export default function ProspectingPage() {
   )
 }
 
-function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSending, selectedIds, onToggleSelect, onSelectAll, allWithEmailSelected }: {
+function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSending, selectedIds, onToggleSelect, onSelectAll, allWithEmailSelected, someSelected }: {
   leads: ProspectingLead[]
   onStatusChange: (id: string, status: string) => void
   onEnrich: (id: string) => Promise<void>
@@ -967,6 +970,7 @@ function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSendin
   onToggleSelect: (id: string) => void
   onSelectAll: () => void
   allWithEmailSelected: boolean
+  someSelected: boolean
 }) {
   const [enrichingId, setEnrichingId] = useState<string | null>(null)
 
@@ -985,8 +989,9 @@ function LeadTable({ leads, onStatusChange, onEnrich, onOutreach, outreachSendin
               <input
                 type="checkbox"
                 checked={allWithEmailSelected}
+                ref={el => { if (el) el.indeterminate = someSelected }}
                 onChange={onSelectAll}
-                title="Seleziona tutti con email"
+                title={allWithEmailSelected ? 'Deseleziona tutti' : 'Seleziona tutti con email'}
                 className="w-3.5 h-3.5 accent-electric-500 cursor-pointer"
               />
             </th>
