@@ -94,6 +94,13 @@ async def start_scraping(request: SearchRequest):
                 "maxCrawledPlacesPerSearch": request.max_results,
                 "language": "it",
                 "countryCode": "it",
+                # Salta dati non necessari per velocizzare lo scraping
+                "maxImagesPerPlace": 0,
+                "maxReviewsPerPlace": 0,
+                "scrapeReviews": False,
+                "scrapeImageAuthors": False,
+                "scrapeContacts": False,
+                "includeWebResults": False,
             },
         )
         if resp.status_code not in (200, 201):
