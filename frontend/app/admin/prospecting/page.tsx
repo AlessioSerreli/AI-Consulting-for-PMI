@@ -6,6 +6,79 @@ import { Brain, Users, TrendingUp, Search, MapPin, Phone, Globe, Star, Target, C
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+const SETTORI_PMI = [
+  // Manifatturiero
+  'Officina meccanica',
+  'Carpenteria metallica',
+  'Lavorazione metalli',
+  'Stampaggio plastica',
+  'Falegnameria e lavorazione legno',
+  'Produzione alimentare',
+  'Panificio e pasticceria',
+  'Tessile e abbigliamento',
+  'Calzaturificio',
+  'Ceramica e piastrelle',
+  'Imballaggi e packaging',
+  'Stampa e tipografia',
+  // Costruzioni e impiantistica
+  'Impresa edile',
+  'Impianti elettrici',
+  'Impianti idraulici',
+  'Impianti termici e climatizzazione',
+  'Serramenti e infissi',
+  'Pavimenti e rivestimenti',
+  'Arredamento su misura',
+  'Giardinaggio e paesaggistica',
+  // Trasporti e logistica
+  'Trasporto merci',
+  'Corriere espresso',
+  'Magazzinaggio e logistica',
+  'Trasporto persone',
+  'Autoscuola',
+  // Commercio
+  'Commercio al dettaglio',
+  'Commercio all\'ingrosso',
+  'Concessionaria auto',
+  'Rivendita materiali edili',
+  'Ferramenta e utensileria',
+  // Servizi alle imprese
+  'Studio commercialista',
+  'Studio legale',
+  'Agenzia di comunicazione',
+  'Agenzia pubblicitaria',
+  'Consulenza informatica',
+  'Software house',
+  'Agenzia immobiliare',
+  'Agenzia assicurativa',
+  'Società di sicurezza',
+  'Pulizie e facility management',
+  'Noleggio attrezzature',
+  // Ristorazione e ospitalità
+  'Ristorante',
+  'Bar e caffetteria',
+  'Pizzeria',
+  'Hotel e B&B',
+  'Catering e banqueting',
+  // Salute e benessere
+  'Farmacia',
+  'Studio dentistico',
+  'Studio medico',
+  'Fisioterapia e riabilitazione',
+  'Palestra e fitness',
+  'Parrucchiere e estetica',
+  'Centro benessere e spa',
+  // Istruzione e formazione
+  'Scuola privata',
+  'Centro formazione professionale',
+  'Asilo nido e infanzia',
+  // Agricoltura
+  'Azienda agricola',
+  'Vivaio',
+  'Agriturismo',
+  'Cantina vinicola',
+  'Oleificio',
+]
+
 const PROVINCE_ITALIANE = [
   'Agrigento', 'Alessandria', 'Ancona', 'Aosta', 'Arezzo', 'Ascoli Piceno', 'Asti', 'Avellino',
   'Bari', 'Barletta-Andria-Trani', 'Belluno', 'Benevento', 'Bergamo', 'Biella', 'Bologna', 'Bolzano',
@@ -102,6 +175,7 @@ export default function ProspectingPage() {
 
   const [filterProvincia, setFilterProvincia] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [filterSettore, setFilterSettore] = useState('')
 
   const [showManualForm, setShowManualForm] = useState(false)
   const [manualForm, setManualForm] = useState({
@@ -301,7 +375,8 @@ export default function ProspectingPage() {
   const filteredSavedLeads = savedLeads.filter(l => {
     const matchProvincia = !filterProvincia || (l.city || '').toLowerCase().includes(filterProvincia.toLowerCase())
     const matchStatus = !filterStatus || l.status === filterStatus
-    return matchProvincia && matchStatus
+    const matchSettore = !filterSettore || (l.category || '').toLowerCase().includes(filterSettore.toLowerCase())
+    return matchProvincia && matchStatus && matchSettore
   })
 
   const currentLeads = activeTab === 'search' ? newResults : filteredSavedLeads
@@ -358,13 +433,16 @@ export default function ProspectingPage() {
           <div className="grid grid-cols-3 gap-4 mb-3">
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Settore / categoria</label>
-              <input
-                type="text"
-                placeholder="es. officina meccanica"
+              <select
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-electric-500"
-              />
+                className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-electric-500"
+              >
+                <option value="">Seleziona settore...</option>
+                {SETTORI_PMI.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Provincia</label>
@@ -643,8 +721,18 @@ export default function ProspectingPage() {
         {activeTab === 'saved' && (
           <div className="bg-navy-800 border border-navy-700 rounded-2xl p-6">
             {/* Filtri */}
-            <div className="flex items-center gap-3 mb-5">
+            <div className="flex items-center gap-3 mb-5 flex-wrap">
               <Filter className="w-4 h-4 text-slate-500 shrink-0" />
+              <select
+                value={filterSettore}
+                onChange={e => setFilterSettore(e.target.value)}
+                className="bg-navy-900 border border-navy-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-electric-500 min-w-[200px]"
+              >
+                <option value="">Tutti i settori</option>
+                {SETTORI_PMI.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
               <select
                 value={filterProvincia}
                 onChange={e => setFilterProvincia(e.target.value)}
@@ -665,15 +753,15 @@ export default function ProspectingPage() {
                   <option key={key} value={key}>{cfg.label}</option>
                 ))}
               </select>
-              {(filterProvincia || filterStatus) && (
+              {(filterSettore || filterProvincia || filterStatus) && (
                 <button
-                  onClick={() => { setFilterProvincia(''); setFilterStatus('') }}
+                  onClick={() => { setFilterSettore(''); setFilterProvincia(''); setFilterStatus('') }}
                   className="text-xs text-slate-400 hover:text-white px-3 py-2 bg-navy-900 border border-navy-700 rounded-xl transition-colors"
                 >
                   Azzera filtri
                 </button>
               )}
-              {(filterProvincia || filterStatus) && (
+              {(filterSettore || filterProvincia || filterStatus) && (
                 <span className="text-xs text-slate-500 ml-auto">
                   {filteredSavedLeads.length} / {savedLeads.length} lead
                 </span>
