@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { Brain, Users, TrendingUp, Search, MapPin, Phone, Globe, Star, Target, CheckCircle, XCircle, Clock, RefreshCw, Mail, Zap, UserPlus, Filter } from 'lucide-react'
+import { Brain, Users, TrendingUp, Search, MapPin, Phone, Globe, Star, Target, CheckCircle, XCircle, Clock, RefreshCw, Mail, Zap, UserPlus, Filter, Download } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -95,6 +95,116 @@ const PROVINCE_ITALIANE = [
   'Vercelli', 'Verona', 'Vibo Valentia', 'Vicenza', 'Viterbo',
 ]
 
+const CITTA_PER_PROVINCIA: Record<string, string[]> = {
+  'Agrigento': ['Agrigento', 'Sciacca', 'Licata', 'Canicattì', 'Favara', 'Porto Empedocle'],
+  'Alessandria': ['Alessandria', 'Casale Monferrato', 'Novi Ligure', 'Tortona', 'Acqui Terme', 'Valenza'],
+  'Ancona': ['Ancona', 'Senigallia', 'Fabriano', 'Jesi', 'Chiaravalle', 'Osimo'],
+  'Aosta': ['Aosta', 'Châtillon', 'Saint-Vincent', 'Courmayeur', 'Morgex'],
+  'Arezzo': ['Arezzo', 'Cortona', 'Sansepolcro', 'Bibbiena', 'Montevarchi', 'Cavriglia'],
+  'Ascoli Piceno': ['Ascoli Piceno', 'San Benedetto del Tronto', 'Monteprandone', 'Grottammare'],
+  'Asti': ['Asti', 'Canelli', 'Nizza Monferrato', 'Villanova d\'Asti'],
+  'Avellino': ['Avellino', 'Ariano Irpino', 'Atripalda', 'Solofra', 'Montoro'],
+  'Bari': ['Bari', 'Altamura', 'Molfetta', 'Bitonto', 'Modugno', 'Andria', 'Barletta', 'Ruvo di Puglia'],
+  'Barletta-Andria-Trani': ['Barletta', 'Andria', 'Trani', 'Canosa di Puglia', 'Margherita di Savoia'],
+  'Belluno': ['Belluno', 'Feltre', 'Sedico', 'Pieve di Cadore', 'Cortina d\'Ampezzo'],
+  'Benevento': ['Benevento', 'Montesarchio', 'Sant\'Agata de\' Goti', 'Telese Terme'],
+  'Bergamo': ['Bergamo', 'Treviglio', 'Dalmine', 'Seriate', 'Romano di Lombardia', 'Calusco d\'Adda', 'Clusone', 'Sarnico'],
+  'Biella': ['Biella', 'Cossato', 'Valdilana', 'Gaglianico', 'Candelo'],
+  'Bologna': ['Bologna', 'Imola', 'Casalecchio di Reno', 'San Lazzaro di Savena', 'Castel Maggiore', 'Budrio', 'Porretta Terme'],
+  'Bolzano': ['Bolzano', 'Merano', 'Bressanone', 'Laives', 'Brunico', 'Appiano sulla Strada del Vino'],
+  'Brescia': ['Brescia', 'Desenzano del Garda', 'Gardone Val Trompia', 'Montichiari', 'Lumezzane', 'Chiari', 'Darfo Boario Terme'],
+  'Brindisi': ['Brindisi', 'Fasano', 'Francavilla Fontana', 'Ostuni', 'Mesagne', 'Ceglie Messapica'],
+  'Cagliari': ['Cagliari', 'Assemini', 'Quartu Sant\'Elena', 'Selargius', 'Capoterra', 'Monserrato'],
+  'Caltanissetta': ['Caltanissetta', 'Gela', 'Niscemi', 'San Cataldo', 'Mussomeli'],
+  'Campobasso': ['Campobasso', 'Termoli', 'Isernia', 'Bojano', 'Venafro'],
+  'Caserta': ['Caserta', 'Aversa', 'Marcianise', 'Santa Maria Capua Vetere', 'Maddaloni', 'Capua'],
+  'Catania': ['Catania', 'Acireale', 'Misterbianco', 'Paternò', 'Gravina di Catania', 'Caltagirone', 'Giarre'],
+  'Catanzaro': ['Catanzaro', 'Lamezia Terme', 'Soverato', 'Chiaravalle Centrale'],
+  'Chieti': ['Chieti', 'Lanciano', 'Vasto', 'Ortona', 'Guardiagrele', 'Francavilla al Mare'],
+  'Como': ['Como', 'Cantù', 'Mariano Comense', 'Erba', 'Olgiate Comasco', 'Appiano Gentile'],
+  'Cosenza': ['Cosenza', 'Rende', 'Castrovillari', 'Corigliano-Rossano', 'Montalto Uffugo', 'Paola'],
+  'Cremona': ['Cremona', 'Crema', 'Casalmaggiore', 'Soresina', 'Pizzighettone'],
+  'Crotone': ['Crotone', 'Cirò Marina', 'Cutro', 'Isola di Capo Rizzuto'],
+  'Cuneo': ['Cuneo', 'Alba', 'Bra', 'Fossano', 'Mondovì', 'Savigliano', 'Saluzzo', 'Busca'],
+  'Enna': ['Enna', 'Piazza Armerina', 'Nicosia', 'Leonforte', 'Barrafranca'],
+  'Fermo': ['Fermo', 'Porto San Giorgio', 'Porto Sant\'Elpidio', 'Sant\'Elpidio a Mare'],
+  'Ferrara': ['Ferrara', 'Cento', 'Argenta', 'Comacchio', 'Bondeno'],
+  'Firenze': ['Firenze', 'Scandicci', 'Sesto Fiorentino', 'Empoli', 'Bagno a Ripoli', 'Campi Bisenzio', 'Pontassieve'],
+  'Foggia': ['Foggia', 'Cerignola', 'Manfredonia', 'San Severo', 'Lucera', 'Vieste'],
+  'Forlì-Cesena': ['Forlì', 'Cesena', 'Cesenatico', 'Savignano sul Rubicone', 'Bertinoro'],
+  'Frosinone': ['Frosinone', 'Cassino', 'Alatri', 'Anagni', 'Sora', 'Ferentino'],
+  'Genova': ['Genova', 'Rapallo', 'Chiavari', 'Sestri Levante', 'Arenzano', 'Lavagna'],
+  'Gorizia': ['Gorizia', 'Monfalcone', 'Gradisca d\'Isonzo', 'Ronchi dei Legionari'],
+  'Grosseto': ['Grosseto', 'Orbetello', 'Follonica', 'Porto Santo Stefano', 'Massa Marittima'],
+  'Imperia': ['Imperia', 'Sanremo', 'Ventimiglia', 'Taggia', 'Bordighera'],
+  'Isernia': ['Isernia', 'Venafro', 'Agnone', 'Pozzilli'],
+  "L'Aquila": ["L'Aquila", 'Avezzano', 'Sulmona', 'Pescina', 'Celano'],
+  'La Spezia': ['La Spezia', 'Sarzana', 'Lerici', 'Follo', 'Arcola'],
+  'Latina': ['Latina', 'Aprilia', 'Terracina', 'Formia', 'Gaeta', 'Fondi', 'Cisterna di Latina'],
+  'Lecce': ['Lecce', 'Taranto', 'Brindisi', 'Gallipoli', 'Otranto', 'Nardò', 'Maglie', 'Casarano'],
+  'Lecco': ['Lecco', 'Merate', 'Calolziocorte', 'Mandello del Lario', 'Bellano'],
+  'Livorno': ['Livorno', 'Piombino', 'Cecina', 'Rosignano Marittimo', 'Portoferraio'],
+  'Lodi': ['Lodi', 'Codogno', 'Sant\'Angelo Lodigiano', 'Casalpusterlengo', 'Lodi Vecchio'],
+  'Lucca': ['Lucca', 'Viareggio', 'Capannori', 'Altopascio', 'Castelnuovo di Garfagnana'],
+  'Macerata': ['Macerata', 'Civitanova Marche', 'Porto Recanati', 'Recanati', 'Tolentino', 'San Severino Marche'],
+  'Mantova': ['Mantova', 'Suzzara', 'Castiglione delle Stiviere', 'Guidizzolo', 'Viadana'],
+  'Massa-Carrara': ['Massa', 'Carrara', 'Aulla', 'Pontremoli', 'Fivizzano'],
+  'Matera': ['Matera', 'Pisticci', 'Nova Siri', 'Policoro', 'Bernalda'],
+  'Messina': ['Messina', 'Milazzo', 'Barcellona Pozzo di Gotto', 'Taormina', 'Patti', 'Sant\'Agata di Militello'],
+  'Milano': ['Milano', 'Sesto San Giovanni', 'Cinisello Balsamo', 'Legnano', 'Rho', 'Corsico', 'Cologno Monzese', 'Pioltello', 'Paderno Dugnano', 'Abbiategrasso'],
+  'Modena': ['Modena', 'Carpi', 'Sassuolo', 'Formigine', 'Mirandola', 'Castelfranco Emilia'],
+  'Monza e Brianza': ['Monza', 'Desio', 'Lissone', 'Seregno', 'Cesano Maderno', 'Muggiò', 'Brugherio'],
+  'Napoli': ['Napoli', 'Giugliano in Campania', 'Torre del Greco', 'Pozzuoli', 'Casoria', 'Castellammare di Stabia', 'Portici', 'Ercolano'],
+  'Novara': ['Novara', 'Borgomanero', 'Arona', 'Verbania', 'Omegna', 'Domodossola'],
+  'Nuoro': ['Nuoro', 'Siniscola', 'Dorgali', 'Orgosolo', 'Bitti'],
+  'Oristano': ['Oristano', 'Terralba', 'Cabras', 'Ghilarza', 'Bosa'],
+  'Padova': ['Padova', 'Abano Terme', 'Cittadella', 'Este', 'Monselice', 'Montagnana'],
+  'Palermo': ['Palermo', 'Bagheria', 'Monreale', 'Carini', 'Termini Imerese', 'Partinico', 'Marsala'],
+  'Parma': ['Parma', 'Fidenza', 'Salsomaggiore Terme', 'Borgotaro', 'Langhirano'],
+  'Pavia': ['Pavia', 'Vigevano', 'Voghera', 'Stradella', 'Mortara', 'Broni'],
+  'Perugia': ['Perugia', 'Foligno', 'Città di Castello', 'Spoleto', 'Assisi', 'Gubbio', 'Umbertide'],
+  'Pesaro e Urbino': ['Pesaro', 'Urbino', 'Fano', 'Fossombrone', 'Novafeltria'],
+  'Pescara': ['Pescara', 'Montesilvano', 'Spoltore', 'Città Sant\'Angelo', 'Penne'],
+  'Piacenza': ['Piacenza', 'Fiorenzuola d\'Arda', 'Castel San Giovanni', 'Borgonovo Val Tidone'],
+  'Pisa': ['Pisa', 'Pontedera', 'Cascina', 'San Miniato', 'Volterra', 'Santa Croce sull\'Arno'],
+  'Pistoia': ['Pistoia', 'Montecatini-Terme', 'Monsummano Terme', 'Pescia', 'Quarrata'],
+  'Pordenone': ['Pordenone', 'Sacile', 'Maniago', 'Spilimbergo', 'Azzano Decimo'],
+  'Potenza': ['Potenza', 'Melfi', 'Lagonegro', 'Viggiano', 'Villa d\'Agri'],
+  'Prato': ['Prato', 'Montemurlo', 'Poggio a Caiano', 'Cantagallo'],
+  'Ragusa': ['Ragusa', 'Modica', 'Vittoria', 'Comiso', 'Ispica', 'Scicli'],
+  'Ravenna': ['Ravenna', 'Faenza', 'Lugo', 'Cervia', 'Russi', 'Bagnacavallo'],
+  'Reggio Calabria': ['Reggio Calabria', 'Gioia Tauro', 'Villa San Giovanni', 'Siderno', 'Palmi', 'Locri'],
+  'Reggio Emilia': ['Reggio Emilia', 'Correggio', 'Guastalla', 'Scandiano', 'Castelnovo ne\' Monti'],
+  'Rieti': ['Rieti', 'Fara in Sabina', 'Poggio Mirteto', 'Magliano Sabina', 'Amatrice'],
+  'Rimini': ['Rimini', 'Riccione', 'Cattolica', 'Santarcangelo di Romagna', 'Bellaria-Igea Marina'],
+  'Roma': ['Roma', 'Guidonia Montecelio', 'Fiumicino', 'Tivoli', 'Velletri', 'Anzio', 'Civitavecchia', 'Pomezia', 'Frosinone'],
+  'Rovigo': ['Rovigo', 'Adria', 'Porto Viro', 'Occhiobello', 'Badia Polesine'],
+  'Salerno': ['Salerno', 'Cava de\' Tirreni', 'Battipaglia', 'Eboli', 'Nocera Inferiore', 'Vallo della Lucania'],
+  'Sassari': ['Sassari', 'Olbia', 'Alghero', 'Porto Torres', 'Ozieri', 'Tempio Pausania'],
+  'Savona': ['Savona', 'Albenga', 'Finale Ligure', 'Loano', 'Cairo Montenotte'],
+  'Siena': ['Siena', 'Poggibonsi', 'Montepulciano', 'Chiusi', 'Colle di Val d\'Elsa', 'Montalcino'],
+  'Siracusa': ['Siracusa', 'Augusta', 'Noto', 'Lentini', 'Avola', 'Pachino', 'Priolo Gargallo'],
+  'Sondrio': ['Sondrio', 'Morbegno', 'Tirano', 'Chiavenna', 'Bormio'],
+  'Sud Sardegna': ['Carbonia', 'Iglesias', 'Villasor', 'Domusnovas', 'Giba'],
+  'Taranto': ['Taranto', 'Massafra', 'Martina Franca', 'Manduria', 'Grottaglie'],
+  'Teramo': ['Teramo', 'Giulianova', 'Roseto degli Abruzzi', 'Pescara', 'Montorio al Vomano'],
+  'Terni': ['Terni', 'Orvieto', 'Narni', 'Amelia', 'Acquasparta'],
+  'Torino': ['Torino', 'Moncalieri', 'Collegno', 'Rivoli', 'Nichelino', 'Grugliasco', 'Pinerolo', 'Chieri', 'Ivrea', 'Settimo Torinese'],
+  'Trapani': ['Trapani', 'Marsala', 'Mazara del Vallo', 'Castelvetrano', 'Alcamo', 'Erice'],
+  'Trento': ['Trento', 'Rovereto', 'Riva del Garda', 'Arco', 'Pergine Valsugana', 'Mezzolombardo'],
+  'Treviso': ['Treviso', 'Conegliano', 'Vittorio Veneto', 'Castelfranco Veneto', 'Oderzo', 'Montebelluna'],
+  'Trieste': ['Trieste', 'Muggia', 'Duino-Aurisina', 'Monrupino'],
+  'Udine': ['Udine', 'Pordenone', 'Palmanova', 'Tolmezzo', 'Codroipo', 'Cividale del Friuli'],
+  'Varese': ['Varese', 'Busto Arsizio', 'Gallarate', 'Saronno', 'Cassano Magnago', 'Luino', 'Sesto Calende'],
+  'Venezia': ['Venezia', 'Mestre', 'Chioggia', 'Marghera', 'San Donà di Piave', 'Jesolo', 'Portogruaro'],
+  'Verbano-Cusio-Ossola': ['Verbania', 'Omegna', 'Domodossola', 'Gravellona Toce'],
+  'Vercelli': ['Vercelli', 'Borgosesia', 'Santhià', 'Gattinara', 'Crescentino'],
+  'Verona': ['Verona', 'Legnago', 'San Bonifacio', 'Villafranca di Verona', 'Isola della Scala', 'Peschiera del Garda'],
+  'Vibo Valentia': ['Vibo Valentia', 'Pizzo', 'Tropea', 'Serra San Bruno'],
+  'Vicenza': ['Vicenza', 'Bassano del Grappa', 'Schio', 'Thiene', 'Valdagno', 'Marostica', 'Arzignano'],
+  'Viterbo': ['Viterbo', 'Civita Castellana', 'Tarquinia', 'Montefiascone', 'Orte'],
+}
+
 const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', icon: TrendingUp },
   { href: '/admin/leads', label: 'Pipeline Lead', icon: Users },
@@ -156,7 +266,8 @@ function formatOutreachDate(isoDate: string): string {
 export default function ProspectingPage() {
   const [query, setQuery] = useState('')
   const [city, setCity] = useState('')
-  const [maxResults, setMaxResults] = useState(20)
+  const [specificCity, setSpecificCity] = useState('')
+  const [maxResults, setMaxResults] = useState(50)
   const [employees, setEmployees] = useState('')
   const [revenue, setRevenue] = useState('')
   const [runStatus, setRunStatus] = useState<RunStatus>('idle')
@@ -199,15 +310,16 @@ export default function ProspectingPage() {
     setError(null)
     setRunStatus('running')
     setNewResults([])
+    const searchCity = specificCity || city
     const empLabel = EMPLOYEES_OPTIONS.find(o => o.value === employees)?.label ?? ''
     const revLabel = REVENUE_OPTIONS.find(o => o.value === revenue)?.label ?? ''
     const filters = [empLabel, revLabel].filter(l => l && !l.startsWith('Qualsiasi')).join(' · ')
-    setSearchLabel(`${query} · ${city}${filters ? ` · ${filters}` : ''}`)
+    setSearchLabel(`${query} · ${searchCity}${filters ? ` · ${filters}` : ''}`)
 
     const res = await fetch(`${API_URL}/prospecting/run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: query.trim(), city: city.trim(), max_results: maxResults, employees: employees || null, revenue: revenue || null }),
+      body: JSON.stringify({ query: query.trim(), city: searchCity, max_results: maxResults, employees: employees || null, revenue: revenue || null }),
     }).catch(() => null)
 
     if (!res?.ok) {
@@ -372,6 +484,32 @@ export default function ProspectingPage() {
     }
   }
 
+  function exportCSV(leads: ProspectingLead[]) {
+    const headers = ['Azienda', 'Città', 'Categoria', 'Telefono', 'Sito web', 'Email', 'Decision Maker', 'Ruolo', 'Email DM', 'Rating', 'Recensioni', 'Status']
+    const rows = leads.map(l => [
+      l.company_name,
+      l.city || l.address || '',
+      l.category || '',
+      l.phone || '',
+      l.website || '',
+      l.email || '',
+      l.owner_name || '',
+      l.owner_position || '',
+      l.owner_email || '',
+      l.rating?.toString() || '',
+      l.review_count?.toString() || '',
+      STATUS_CONFIG[l.status]?.label || l.status,
+    ])
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `prospect_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const filteredSavedLeads = savedLeads.filter(l => {
     const matchProvincia = !filterProvincia || (l.city || '').toLowerCase().includes(filterProvincia.toLowerCase())
     const matchStatus = !filterStatus || l.status === filterStatus
@@ -430,7 +568,7 @@ export default function ProspectingPage() {
             <Search className="w-4 h-4 text-electric-400" />
             Nuova ricerca
           </h2>
-          <div className="grid grid-cols-3 gap-4 mb-3">
+          <div className="grid grid-cols-4 gap-4 mb-3">
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Settore / categoria</label>
               <select
@@ -448,12 +586,26 @@ export default function ProspectingPage() {
               <label className="text-xs text-slate-400 mb-1 block">Provincia</label>
               <select
                 value={city}
-                onChange={e => setCity(e.target.value)}
+                onChange={e => { setCity(e.target.value); setSpecificCity('') }}
                 className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-electric-500"
               >
                 <option value="">Seleziona provincia...</option>
                 {PROVINCE_ITALIANE.map(p => (
                   <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Città specifica</label>
+              <select
+                value={specificCity}
+                onChange={e => setSpecificCity(e.target.value)}
+                disabled={!city}
+                className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-electric-500 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <option value="">Tutta la provincia</option>
+                {(CITTA_PER_PROVINCIA[city] || []).map(c => (
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>
@@ -464,9 +616,10 @@ export default function ProspectingPage() {
                 onChange={e => setMaxResults(Number(e.target.value))}
                 className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-electric-500"
               >
-                <option value={10}>10</option>
                 <option value={20}>20</option>
                 <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
               </select>
             </div>
           </div>
@@ -634,6 +787,14 @@ export default function ProspectingPage() {
             <div />
           )}
           <div className="flex items-center gap-2">
+            {currentLeads.length > 0 && (
+              <button
+                onClick={() => exportCSV(currentLeads)}
+                className="flex items-center gap-2 px-4 py-2 bg-navy-800 border border-navy-700 hover:border-electric-500/50 text-slate-300 hover:text-white rounded-xl text-sm transition-colors"
+              >
+                <Download className="w-3.5 h-3.5 text-electric-400" /> Esporta CSV ({currentLeads.length})
+              </button>
+            )}
             <button
               onClick={() => setShowManualForm(v => !v)}
               className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm transition-colors ${
