@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 import os
+import asyncio
 import httpx
 from supabase import create_client
 
@@ -465,7 +466,7 @@ async def _search_ddg_emails(company_name: str, city: str, client: httpx.AsyncCl
                 if not page_url.startswith('http'):
                     page_url = 'https://' + page_url
                 try:
-                    page = await client.get(page_url, headers=headers, follow_redirects=True, timeout=8)
+                    page = await client.get(page_url, headers=headers, follow_redirects=True, timeout=5)
                     if page.status_code == 200:
                         found.extend(EMAIL_REGEX.findall(page.text))
                 except Exception:
@@ -502,7 +503,7 @@ async def _scrape_website_emails(website: str, client: httpx.AsyncClient) -> lis
     domain = _extract_domain(website) or ''
     for url in pages_to_try:
         try:
-            resp = await client.get(url, headers=headers, follow_redirects=True, timeout=8)
+            resp = await client.get(url, headers=headers, follow_redirects=True, timeout=5)
             if resp.status_code == 200:
                 emails = EMAIL_REGEX.findall(resp.text)
                 found.extend(emails)
@@ -621,11 +622,71 @@ async def enrich_lead(lead_id: str):
     return {"enriched": True, "saved": saved, "source": source, "domain": domain, "contact": contact}
 
 
+async def _enrich_single(lead: dict, client: httpx.AsyncClient, hunter_key: str) -> tuple[str, bool]:
+    """
+    Arricchisce un singolo lead con la cascata sito → DDG → Hunter.
+    Ritorna (lead_id, enriched: bool).
+    """
+    supabase = get_supabase()
+    lead_id      = lead["id"]
+    website      = lead.get("website", "")
+    company_name = lead.get("company_name", "")
+    city         = lead.get("city", "")
+    domain       = _extract_domain(website)
+    contact: dict = {}
+
+    # Step 1: scraping sito
+    if website:
+        try:
+            scraped = await _scrape_website_emails(website, client)
+            if scraped:
+                contact = {"owner_email": scraped[0], "hunter_domain": domain or ""}
+        except Exception:
+            pass
+
+    # Step 2: DuckDuckGo
+    if not contact and company_name:
+        try:
+            ddg_emails = await _search_ddg_emails(company_name, city, client)
+            if ddg_emails:
+                contact = {"owner_email": ddg_emails[0], "hunter_domain": domain or ""}
+        except Exception:
+            pass
+
+    # Step 3: Hunter.io fallback
+    if not contact and domain and hunter_key:
+        try:
+            resp = await client.get(
+                f"{HUNTER_BASE}/domain-search",
+                params={"domain": domain, "api_key": hunter_key, "limit": 3},
+                timeout=8,
+            )
+            emails = resp.json().get("data", {}).get("emails", [])
+            if emails:
+                best = emails[0]
+                contact = {
+                    "owner_name":    f"{best.get('first_name','')} {best.get('last_name','')}".strip(),
+                    "owner_email":   best.get("value", ""),
+                    "hunter_domain": domain,
+                }
+        except Exception:
+            pass
+
+    if not contact:
+        return lead_id, False
+
+    try:
+        supabase.table("prospecting_leads").update(contact).eq("id", lead_id).execute()
+        return lead_id, True
+    except Exception:
+        return lead_id, False
+
+
 @router.post("/leads/enrich-all")
 async def enrich_all_leads(limit: int = Query(10)):
     """
-    Arricchisce i primi N lead non ancora enriched.
-    Usa scraping sito + Hunter.io in cascata per massimizzare il tasso di successo.
+    Arricchisce i primi N lead non ancora enriched in parallelo.
+    Tutti i lead vengono processati contemporaneamente — velocità ~10x rispetto alla versione sequenziale.
     """
     supabase = get_supabase()
     result = (
@@ -636,60 +697,17 @@ async def enrich_all_leads(limit: int = Query(10)):
         .execute()
     )
     leads = result.data or []
-    hunter_key = os.getenv("HUNTER_API_KEY")
+    hunter_key = os.getenv("HUNTER_API_KEY", "")
+
+    async with httpx.AsyncClient(timeout=12) as client:
+        tasks = [_enrich_single(lead, client, hunter_key) for lead in leads]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
     enriched, skipped = [], []
-
-    async with httpx.AsyncClient(timeout=15) as client:
-        for lead in leads:
-            website      = lead.get("website", "")
-            company_name = lead.get("company_name", "")
-            city         = lead.get("city", "")
-            domain       = _extract_domain(website)
-            contact      = {}
-
-            # Step 1: scraping sito
-            if website:
-                try:
-                    scraped = await _scrape_website_emails(website, client)
-                    if scraped:
-                        contact = {"owner_email": scraped[0], "hunter_domain": domain or ""}
-                except Exception:
-                    pass
-
-            # Step 2: DuckDuckGo search
-            if not contact and company_name:
-                try:
-                    ddg_emails = await _search_ddg_emails(company_name, city, client)
-                    if ddg_emails:
-                        contact = {"owner_email": ddg_emails[0], "hunter_domain": domain or ""}
-                except Exception:
-                    pass
-
-            # Step 3: Hunter.io fallback
-            if not contact and domain and hunter_key:
-                try:
-                    resp = await client.get(
-                        f"{HUNTER_BASE}/domain-search",
-                        params={"domain": domain, "api_key": hunter_key, "limit": 3},
-                    )
-                    emails = resp.json().get("data", {}).get("emails", [])
-                    if emails:
-                        best = emails[0]
-                        contact = {
-                            "owner_name":  f"{best.get('first_name','')} {best.get('last_name','')}".strip(),
-                            "owner_email": best.get("value", ""),
-                            "hunter_domain": domain,
-                        }
-                except Exception:
-                    pass
-
-            if contact:
-                try:
-                    supabase.table("prospecting_leads").update(contact).eq("id", lead["id"]).execute()
-                    enriched.append(lead["id"])
-                except Exception:
-                    skipped.append(lead["id"])
-            else:
-                skipped.append(lead["id"])
+    for res in results:
+        if isinstance(res, Exception):
+            continue
+        lead_id, ok = res
+        (enriched if ok else skipped).append(lead_id)
 
     return {"enriched": len(enriched), "skipped": len(skipped), "enriched_ids": enriched}
