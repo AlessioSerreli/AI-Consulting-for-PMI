@@ -348,7 +348,7 @@ export default function ProspectingPage() {
         setRunStatus('failed')
         setError(`Scraping fallito con status: ${data.status}`)
       }
-    }, 4000)
+    }, 2000)
   }
 
   async function fetchResults(id: string) {
