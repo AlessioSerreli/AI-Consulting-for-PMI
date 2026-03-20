@@ -2,9 +2,25 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { Brain, Users, TrendingUp, Search, MapPin, Phone, Globe, Star, Target, CheckCircle, XCircle, Clock, RefreshCw, Mail, Zap, UserPlus } from 'lucide-react'
+import { Brain, Users, TrendingUp, Search, MapPin, Phone, Globe, Star, Target, CheckCircle, XCircle, Clock, RefreshCw, Mail, Zap, UserPlus, Filter } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+const PROVINCE_ITALIANE = [
+  'Agrigento', 'Alessandria', 'Ancona', 'Aosta', 'Arezzo', 'Ascoli Piceno', 'Asti', 'Avellino',
+  'Bari', 'Barletta-Andria-Trani', 'Belluno', 'Benevento', 'Bergamo', 'Biella', 'Bologna', 'Bolzano',
+  'Brescia', 'Brindisi', 'Cagliari', 'Caltanissetta', 'Campobasso', 'Caserta', 'Catania', 'Catanzaro',
+  'Chieti', 'Como', 'Cosenza', 'Cremona', 'Crotone', 'Cuneo', 'Enna', 'Fermo', 'Ferrara', 'Firenze',
+  'Foggia', 'Forlì-Cesena', 'Frosinone', 'Genova', 'Gorizia', 'Grosseto', 'Imperia', 'Isernia',
+  "L'Aquila", 'La Spezia', 'Latina', 'Lecce', 'Lecco', 'Livorno', 'Lodi', 'Lucca', 'Macerata',
+  'Mantova', 'Massa-Carrara', 'Matera', 'Messina', 'Milano', 'Modena', 'Monza e Brianza', 'Napoli',
+  'Novara', 'Nuoro', 'Oristano', 'Padova', 'Palermo', 'Parma', 'Pavia', 'Perugia', 'Pesaro e Urbino',
+  'Pescara', 'Piacenza', 'Pisa', 'Pistoia', 'Pordenone', 'Potenza', 'Prato', 'Ragusa', 'Ravenna',
+  'Reggio Calabria', 'Reggio Emilia', 'Rieti', 'Rimini', 'Roma', 'Rovigo', 'Salerno', 'Sassari',
+  'Savona', 'Siena', 'Siracusa', 'Sondrio', 'Sud Sardegna', 'Taranto', 'Teramo', 'Terni', 'Torino',
+  'Trapani', 'Trento', 'Treviso', 'Trieste', 'Udine', 'Varese', 'Venezia', 'Verbano-Cusio-Ossola',
+  'Vercelli', 'Verona', 'Vibo Valentia', 'Vicenza', 'Viterbo',
+]
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', icon: TrendingUp },
@@ -83,6 +99,9 @@ export default function ProspectingPage() {
   const [outreachSending, setOutreachSending] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkOutreaching, setBulkOutreaching] = useState(false)
+
+  const [filterProvincia, setFilterProvincia] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
 
   const [showManualForm, setShowManualForm] = useState(false)
   const [manualForm, setManualForm] = useState({
@@ -279,7 +298,13 @@ export default function ProspectingPage() {
     }
   }
 
-  const currentLeads = activeTab === 'search' ? newResults : savedLeads
+  const filteredSavedLeads = savedLeads.filter(l => {
+    const matchProvincia = !filterProvincia || (l.city || '').toLowerCase().includes(filterProvincia.toLowerCase())
+    const matchStatus = !filterStatus || l.status === filterStatus
+    return matchProvincia && matchStatus
+  })
+
+  const currentLeads = activeTab === 'search' ? newResults : filteredSavedLeads
   const allWithEmailSelected =
     currentLeads.filter(l => l.owner_email || l.email).length > 0 &&
     currentLeads.filter(l => l.owner_email || l.email).every(l => selectedIds.has(l.id))
@@ -342,14 +367,17 @@ export default function ProspectingPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Città</label>
-              <input
-                type="text"
-                placeholder="es. Milano"
+              <label className="text-xs text-slate-400 mb-1 block">Provincia</label>
+              <select
                 value={city}
                 onChange={e => setCity(e.target.value)}
-                className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-electric-500"
-              />
+                className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-electric-500"
+              >
+                <option value="">Seleziona provincia...</option>
+                {PROVINCE_ITALIANE.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Max risultati</label>
@@ -614,13 +642,55 @@ export default function ProspectingPage() {
 
         {activeTab === 'saved' && (
           <div className="bg-navy-800 border border-navy-700 rounded-2xl p-6">
+            {/* Filtri */}
+            <div className="flex items-center gap-3 mb-5">
+              <Filter className="w-4 h-4 text-slate-500 shrink-0" />
+              <select
+                value={filterProvincia}
+                onChange={e => setFilterProvincia(e.target.value)}
+                className="bg-navy-900 border border-navy-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-electric-500 min-w-[180px]"
+              >
+                <option value="">Tutte le province</option>
+                {PROVINCE_ITALIANE.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+              <select
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+                className="bg-navy-900 border border-navy-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-electric-500 min-w-[150px]"
+              >
+                <option value="">Tutti gli status</option>
+                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                  <option key={key} value={key}>{cfg.label}</option>
+                ))}
+              </select>
+              {(filterProvincia || filterStatus) && (
+                <button
+                  onClick={() => { setFilterProvincia(''); setFilterStatus('') }}
+                  className="text-xs text-slate-400 hover:text-white px-3 py-2 bg-navy-900 border border-navy-700 rounded-xl transition-colors"
+                >
+                  Azzera filtri
+                </button>
+              )}
+              {(filterProvincia || filterStatus) && (
+                <span className="text-xs text-slate-500 ml-auto">
+                  {filteredSavedLeads.length} / {savedLeads.length} lead
+                </span>
+              )}
+            </div>
+
             {savedLeads.length === 0 ? (
               <div className="text-center py-16 text-slate-500">
                 <p>Nessun lead salvato ancora. Avvia una ricerca per iniziare.</p>
               </div>
+            ) : filteredSavedLeads.length === 0 ? (
+              <div className="text-center py-16 text-slate-500">
+                <p>Nessun lead corrisponde ai filtri selezionati.</p>
+              </div>
             ) : (
               <LeadTable
-                leads={savedLeads}
+                leads={filteredSavedLeads}
                 onStatusChange={updateStatus}
                 onEnrich={enrichLead}
                 onOutreach={sendOutreach}
