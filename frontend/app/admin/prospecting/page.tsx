@@ -359,10 +359,20 @@ export default function ProspectingPage() {
       return
     }
     const data = await res.json()
-    setNewResults(data.results || [])
+    const results = data.results || []
+    setNewResults(results)
     setRunStatus('succeeded')
     setActiveTab('search')
     loadSavedLeads()
+
+    // Enrich automatico — parte subito in background dopo lo scraping
+    const withWebsite = results.filter((l: ProspectingLead) => l.website && !l.owner_email).length
+    if (withWebsite > 0) {
+      setEnrichingAll(true)
+      await fetch(`${API_URL}/prospecting/leads/enrich-all?limit=${results.length}`, { method: 'POST' }).catch(() => null)
+      await loadSavedLeads()
+      setEnrichingAll(false)
+    }
   }
 
   async function updateStatus(id: string, status: string) {
@@ -812,8 +822,8 @@ export default function ProspectingPage() {
               className="flex items-center gap-2 px-4 py-2 bg-navy-800 border border-navy-700 hover:border-electric-500/50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-xl text-sm transition-colors"
             >
               {enrichingAll
-                ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Enrichment in corso...</>
-                : <><Zap className="w-3.5 h-3.5 text-electric-400" /> Enrich All (Hunter.io)</>
+                ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Ricerca email in corso...</>
+                : <><Zap className="w-3.5 h-3.5 text-electric-400" /> Enrich All</>
               }
             </button>
           </div>
@@ -863,6 +873,11 @@ export default function ProspectingPage() {
               <>
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-slate-400 text-sm">{newResults.length} aziende trovate · {searchLabel}</p>
+                  {enrichingAll && (
+                    <span className="flex items-center gap-1.5 text-xs text-electric-400 bg-electric-500/10 border border-electric-500/20 px-3 py-1.5 rounded-xl">
+                      <RefreshCw className="w-3 h-3 animate-spin" /> Ricerca email in corso...
+                    </span>
+                  )}
                 </div>
                 <LeadTable
                   leads={newResults}
