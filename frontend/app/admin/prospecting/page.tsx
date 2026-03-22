@@ -288,6 +288,9 @@ export default function ProspectingPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [filterSettore, setFilterSettore] = useState('')
 
+  const [previewLead, setPreviewLead] = useState<ProspectingLead | null>(null)
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+
   const [showManualForm, setShowManualForm] = useState(false)
   const [manualForm, setManualForm] = useState({
     company_name: '', owner_email: '', owner_name: '',
@@ -405,9 +408,14 @@ export default function ProspectingPage() {
 
   async function sendOutreach(lead: ProspectingLead) {
     if (!lead.owner_email && !lead.email) {
-      alert('Nessuna email disponibile. Esegui prima l\'enrich Hunter.io.')
+      alert('Nessuna email disponibile. Esegui prima l\'enrich.')
       return
     }
+    setPreviewLead(lead)
+  }
+
+  async function confirmOutreach(lead: ProspectingLead) {
+    setPreviewLead(null)
     setOutreachSending(lead.id)
     const res = await fetch(`${API_URL}/prospecting/leads/${lead.id}/outreach`, { method: 'POST' }).catch(() => null)
     setOutreachSending(null)
@@ -416,9 +424,7 @@ export default function ProspectingPage() {
       const now = new Date().toISOString()
       setSavedLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'contacted', outreach_sent_at: now } : l))
       setNewResults(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'contacted', outreach_sent_at: now } : l))
-      if (data.already_in_pipeline) {
-        alert('Lead già in pipeline')
-      }
+      if (data.already_in_pipeline) alert('Lead già in pipeline')
     } else {
       alert('Errore invio email. Controlla i log del backend.')
     }
@@ -427,6 +433,7 @@ export default function ProspectingPage() {
   async function sendBulkOutreach() {
     const ids = Array.from(selectedIds)
     if (ids.length === 0) return
+    setShowBulkConfirm(false)
     setBulkOutreaching(true)
 
     const res = await fetch(`${API_URL}/prospecting/leads/bulk-outreach`, {
@@ -784,7 +791,7 @@ export default function ProspectingPage() {
                 Deseleziona
               </button>
               <button
-                onClick={sendBulkOutreach}
+                onClick={() => setShowBulkConfirm(true)}
                 disabled={bulkOutreaching}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-electric-500/10 border border-electric-500/30 hover:bg-electric-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-electric-400 rounded-xl text-sm font-medium transition-colors"
               >
@@ -971,6 +978,108 @@ export default function ProspectingPage() {
           </div>
         )}
       </main>
+
+      {/* Modale conferma bulk outreach */}
+      {showBulkConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-navy-800 border border-navy-600 rounded-2xl w-full max-w-md">
+            <div className="p-6 border-b border-navy-700">
+              <h2 className="text-white font-semibold text-lg">Conferma invio bulk</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-4 bg-electric-500/10 border border-electric-500/20 rounded-xl p-4">
+                <div className="text-3xl font-bold text-electric-400">{selectedIds.size}</div>
+                <div>
+                  <p className="text-white font-medium">aziende selezionate</p>
+                  <p className="text-slate-400 text-sm">riceveranno l&apos;email outreach</p>
+                </div>
+              </div>
+              <p className="text-slate-300 text-sm">
+                Sei sicuro di voler inviare l&apos;email di outreach a tutte le <strong className="text-white">{selectedIds.size} aziende</strong> selezionate? L&apos;operazione non è reversibile.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-navy-700">
+              <button
+                onClick={() => setShowBulkConfirm(false)}
+                className="px-5 py-2.5 text-sm text-slate-400 hover:text-white bg-navy-900 border border-navy-700 rounded-xl transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={sendBulkOutreach}
+                className="flex items-center gap-2 px-5 py-2.5 bg-electric-500 hover:bg-electric-600 text-white font-medium rounded-xl text-sm transition-colors"
+              >
+                <Mail className="w-4 h-4" /> Sì, invia a tutte
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale anteprima outreach */}
+      {previewLead && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-navy-800 border border-navy-600 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-navy-700">
+              <div>
+                <h2 className="text-white font-semibold text-lg">Anteprima email outreach</h2>
+                <p className="text-slate-400 text-sm mt-0.5">Controlla prima di inviare</p>
+              </div>
+              <button onClick={() => setPreviewLead(null)} className="text-slate-400 hover:text-white transition-colors text-xl leading-none">✕</button>
+            </div>
+
+            {/* Info invio */}
+            <div className="px-6 py-4 bg-navy-900/50 border-b border-navy-700 space-y-1.5">
+              <div className="flex gap-2 text-sm">
+                <span className="text-slate-500 w-16 shrink-0">A:</span>
+                <span className="text-white">{previewLead.owner_email || previewLead.email}</span>
+              </div>
+              <div className="flex gap-2 text-sm">
+                <span className="text-slate-500 w-16 shrink-0">Oggetto:</span>
+                <span className="text-white">Ho analizzato {previewLead.company_name} — diagnosi gratuita per te</span>
+              </div>
+            </div>
+
+            {/* Preview email */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="bg-white rounded-xl p-6 text-sm text-gray-800 space-y-4 leading-relaxed">
+                <p>Ciao <strong>{(previewLead.owner_name || previewLead.company_name).split(' ')[0] || 'Imprenditore'}</strong>,</p>
+                <p>Ho analizzato <strong>{previewLead.company_name}</strong> e penso ci siano margini concreti per ridurre il lavoro manuale e aumentare l&apos;efficienza operativa con strumenti AI accessibili.</p>
+                <p>Ho preparato una <strong>diagnosi gratuita</strong> — 5 minuti di questionario, e ricevi un report personalizzato con il tuo punteggio di efficienza e 3 azioni concrete da implementare subito.</p>
+                <div className="bg-amber-50 border-l-4 border-amber-400 p-3 space-y-2">
+                  <p>① Il tuo <strong>punteggio di efficienza operativa</strong> vs le PMI del tuo settore</p>
+                  <p>② Le <strong>3 aree critiche</strong> con i quick win attivabili subito</p>
+                  <p>★ Il <strong>Certificato di Efficienza Operativa</strong> — completamente gratuito</p>
+                </div>
+                <div className="bg-gray-900 text-amber-400 font-bold px-6 py-3 rounded-lg inline-block">
+                  Inizia la diagnosi gratuita →
+                </div>
+                <p className="text-gray-500 text-xs">Oppure rispondi a questa email. Ti rispondo entro 24 ore.</p>
+                <hr />
+                <p className="text-gray-700 font-semibold">Luigi Negro &amp; Alessio Serreli</p>
+                <p className="text-gray-400 text-xs uppercase tracking-wide">AI Expert · Ottimizzazione Processi PMI</p>
+              </div>
+            </div>
+
+            {/* Footer azioni */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-navy-700">
+              <button
+                onClick={() => setPreviewLead(null)}
+                className="px-5 py-2.5 text-sm text-slate-400 hover:text-white bg-navy-900 border border-navy-700 rounded-xl transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => confirmOutreach(previewLead)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-electric-500 hover:bg-electric-600 text-white font-medium rounded-xl text-sm transition-colors"
+              >
+                <Mail className="w-4 h-4" /> Conferma e invia
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
