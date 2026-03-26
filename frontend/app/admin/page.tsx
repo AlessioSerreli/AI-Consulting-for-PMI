@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Brain, Users, TrendingUp, Calendar, ArrowRight, AlertCircle, Target } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Brain, Users, TrendingUp, Calendar, ArrowRight, AlertCircle, Target, LogOut } from 'lucide-react'
 
 interface Stats {
   total_leads: number
@@ -12,12 +13,20 @@ interface Stats {
 }
 
 function Sidebar({ active }: { active: string }) {
+  const router = useRouter()
   const links = [
     { href: '/admin', label: 'Dashboard', icon: TrendingUp },
     { href: '/admin/leads', label: 'Pipeline Lead', icon: Users },
     { href: '/admin/clients', label: 'Clienti Attivi', icon: Brain },
     { href: '/admin/prospecting', label: 'Prospecting', icon: Target },
   ]
+
+  async function handleLogout() {
+    await fetch('/api/admin/logout', { method: 'POST' })
+    router.push('/admin/login')
+    router.refresh()
+  }
+
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-navy-800 border-r border-navy-700 flex flex-col z-40">
       <div className="p-6 border-b border-navy-700">
@@ -38,8 +47,14 @@ function Sidebar({ active }: { active: string }) {
           </Link>
         ))}
       </nav>
-      <div className="p-4 border-t border-navy-700">
+      <div className="p-4 border-t border-navy-700 space-y-3">
         <div className="font-mono text-xs text-slate-600">v0.1.0 — MVP</div>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 text-xs text-slate-500 hover:text-red-400 transition-colors"
+        >
+          <LogOut className="w-3.5 h-3.5" /> Esci
+        </button>
       </div>
     </aside>
   )

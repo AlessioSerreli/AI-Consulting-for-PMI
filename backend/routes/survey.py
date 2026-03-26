@@ -1,9 +1,10 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 import os
 import logging
 from supabase import create_client
+from limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,20 @@ class SurveyPayload(BaseModel):
     contact_email: str
     sector: str
     employees: str
+
+    @field_validator('company_name', 'contact_name', 'sector', 'employees')
+    @classmethod
+    def max_length_short(cls, v: str) -> str:
+        if len(v) > 200:
+            raise ValueError('Campo troppo lungo (max 200 caratteri)')
+        return v
+
+    @field_validator('contact_email')
+    @classmethod
+    def max_length_email(cls, v: str) -> str:
+        if len(v) > 254:
+            raise ValueError('Email troppo lunga')
+        return v
     # Campi vecchia survey (opzionali per retrocompatibilità)
     founded_year: Optional[str] = None
     main_processes: Optional[List[str]] = None
@@ -53,7 +68,8 @@ class SurveyPayload(BaseModel):
     prospecting_ref: Optional[str] = None
 
 @router.post("/survey")
-async def submit_survey(payload: SurveyPayload, background_tasks: BackgroundTasks):
+@limiter.limit("15/hour")
+async def submit_survey(request: Request, payload: SurveyPayload, background_tasks: BackgroundTasks):
     try:
         supabase = get_supabase()
         data = payload.model_dump()

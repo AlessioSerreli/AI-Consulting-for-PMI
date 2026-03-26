@@ -8,3 +8,4 @@ resend>=2.0.0
 python-multipart>=0.0.9
 httpx>=0.26.0,<0.28.0
 weasyprint>=60.0  # PDF generation — usa pydyf (no cairo richiesto da v53+)
+slowapi>=0.1.9    # rate limiting
