@@ -2,5 +2,13 @@
 aptPkgs = [
   "libffi-dev",
   "pkg-config",
-  "shared-mime-info"
+  "shared-mime-info",
+  "libpango-1.0-0",
+  "libpangocairo-1.0-0",
+  "libgdk-pixbuf-2.0-0",
+  "libcairo2",
+  "libcairo2-dev",
+  "fonts-liberation",
+  "fonts-dejavu-core",
+  "fontconfig"
 ]

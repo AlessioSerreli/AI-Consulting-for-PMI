@@ -29,26 +29,12 @@ def get_apify_token():
     return token
 
 
-EMPLOYEES_KEYWORDS = {
-    "micro":   "micro impresa",
-    "piccola": "piccola impresa",
-    "media":   "media impresa",
-}
-
-REVENUE_LABELS = {
-    "<500k":   "fatturato sotto 500k",
-    "500k2m":  "fatturato 500k-2M",
-    "2m10m":   "fatturato 2M-10M",
-    ">10m":    "fatturato oltre 10M",
-}
-
-
 class SearchRequest(BaseModel):
-    query: str                        # es. "officina meccanica"
-    city: str                         # es. "Milano"
+    query: str                          # es. "officina meccanica"
+    city: str                           # es. "Milano"
     max_results: int = 20
-    employees: Optional[str] = None   # micro | piccola | media
-    revenue: Optional[str] = None     # <500k | 500k2m | 2m10m | >10m
+    min_reviews: Optional[int] = None   # numero minimo recensioni
+    min_rating: Optional[float] = None  # stelle minime (1.0–5.0)
 
 
 class LeadStatusUpdate(BaseModel):
@@ -75,33 +61,38 @@ class ManualLeadCreate(BaseModel):
 async def start_scraping(request: SearchRequest):
     token = get_apify_token()
 
-    # Arricchisce la query con la dimensione aziendale se specificata
-    parts = [request.query]
-    if request.employees and request.employees in EMPLOYEES_KEYWORDS:
-        parts.append(EMPLOYEES_KEYWORDS[request.employees])
-    search_string = f"{' '.join(parts)} {request.city}"
+    search_string = f"{request.query} {request.city}"
 
-    # Etichetta leggibile per i log / risposta
-    revenue_label = REVENUE_LABELS.get(request.revenue or "", "")
-    search_label = search_string + (f" | fatturato: {revenue_label}" if revenue_label else "")
+    # Etichetta leggibile per log / risposta
+    extras = []
+    if request.min_rating:
+        extras.append(f"≥{request.min_rating}★")
+    if request.min_reviews:
+        extras.append(f"≥{request.min_reviews} rec.")
+    search_label = search_string + (f" | {' · '.join(extras)}" if extras else "")
+
+    apify_payload: dict = {
+        "searchStringsArray": [search_string],
+        "maxCrawledPlacesPerSearch": request.max_results,
+        "language": "it",
+        "countryCode": "it",
+        "maxImagesPerPlace": 0,
+        "maxReviewsPerPlace": 0,
+        "scrapeReviews": False,
+        "scrapeImageAuthors": False,
+        "scrapeContacts": False,
+        "includeWebResults": False,
+    }
+    if request.min_rating is not None:
+        apify_payload["minimumStars"] = request.min_rating
+    if request.min_reviews is not None:
+        apify_payload["minimumNumberOfReviews"] = request.min_reviews
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             f"{APIFY_BASE}/acts/{APIFY_ACTOR}/runs",
             params={"token": token},
-            json={
-                "searchStringsArray": [search_string],
-                "maxCrawledPlacesPerSearch": request.max_results,
-                "language": "it",
-                "countryCode": "it",
-                # Salta dati non necessari per velocizzare lo scraping
-                "maxImagesPerPlace": 0,
-                "maxReviewsPerPlace": 0,
-                "scrapeReviews": False,
-                "scrapeImageAuthors": False,
-                "scrapeContacts": False,
-                "includeWebResults": False,
-            },
+            json=apify_payload,
         )
         if resp.status_code not in (200, 201):
             raise HTTPException(500, f"Errore Apify: {resp.text}")

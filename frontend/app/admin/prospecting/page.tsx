@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { Brain, Users, TrendingUp, Search, MapPin, Phone, Globe, Star, Target, CheckCircle, XCircle, Clock, RefreshCw, Mail, Zap, UserPlus, Filter, Download } from 'lucide-react'
 
@@ -243,19 +243,21 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   dismissed: { label: 'Scartato',   color: 'bg-slate-500/10 text-slate-500' },
 }
 
-const EMPLOYEES_OPTIONS = [
-  { value: '',         label: 'Qualsiasi dimensione' },
-  { value: 'micro',    label: 'Micro (1–9 dip.)' },
-  { value: 'piccola',  label: 'Piccola (10–49 dip.)' },
-  { value: 'media',    label: 'Media (50–249 dip.)' },
+const MIN_REVIEWS_OPTIONS = [
+  { value: '',    label: 'Qualsiasi n° recensioni' },
+  { value: '5',   label: '≥ 5 recensioni' },
+  { value: '10',  label: '≥ 10 recensioni' },
+  { value: '25',  label: '≥ 25 recensioni' },
+  { value: '50',  label: '≥ 50 recensioni' },
+  { value: '100', label: '≥ 100 recensioni' },
 ]
 
-const REVENUE_OPTIONS = [
-  { value: '',       label: 'Qualsiasi fatturato' },
-  { value: '<500k',  label: '< €500k' },
-  { value: '500k2m', label: '€500k – €2M' },
-  { value: '2m10m',  label: '€2M – €10M' },
-  { value: '>10m',   label: '> €10M' },
+const MIN_RATING_OPTIONS = [
+  { value: '',    label: 'Qualsiasi valutazione' },
+  { value: '3',   label: '≥ 3 stelle' },
+  { value: '3.5', label: '≥ 3.5 stelle' },
+  { value: '4',   label: '≥ 4 stelle' },
+  { value: '4.5', label: '≥ 4.5 stelle' },
 ]
 
 function formatOutreachDate(isoDate: string): string {
@@ -268,8 +270,8 @@ export default function ProspectingPage() {
   const [city, setCity] = useState('')
   const [specificCity, setSpecificCity] = useState('')
   const [maxResults, setMaxResults] = useState(50)
-  const [employees, setEmployees] = useState('')
-  const [revenue, setRevenue] = useState('')
+  const [minReviews, setMinReviews] = useState('')
+  const [minRating, setMinRating] = useState('')
   const [runStatus, setRunStatus] = useState<RunStatus>('idle')
   const [runId, setRunId] = useState<string | null>(null)
   const [searchLabel, setSearchLabel] = useState('')
@@ -314,19 +316,28 @@ export default function ProspectingPage() {
     setRunStatus('running')
     setNewResults([])
     const searchCity = specificCity || city
-    const empLabel = EMPLOYEES_OPTIONS.find(o => o.value === employees)?.label ?? ''
-    const revLabel = REVENUE_OPTIONS.find(o => o.value === revenue)?.label ?? ''
-    const filters = [empLabel, revLabel].filter(l => l && !l.startsWith('Qualsiasi')).join(' · ')
-    setSearchLabel(`${query} · ${searchCity}${filters ? ` · ${filters}` : ''}`)
+    const extras = [
+      minRating ? `≥${minRating}★` : '',
+      minReviews ? `≥${minReviews} rec.` : '',
+    ].filter(Boolean).join(' · ')
+    setSearchLabel(`${query} · ${searchCity}${extras ? ` · ${extras}` : ''}`)
 
     const res = await fetch(`${API_URL}/prospecting/run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: query.trim(), city: searchCity, max_results: maxResults, employees: employees || null, revenue: revenue || null }),
+      body: JSON.stringify({
+        query: query.trim(),
+        city: searchCity,
+        max_results: maxResults,
+        min_reviews: minReviews ? Number(minReviews) : null,
+        min_rating: minRating ? Number(minRating) : null,
+      }),
     }).catch(() => null)
 
     if (!res?.ok) {
-      setError('Errore avvio ricerca. Verifica che APIFY_API_TOKEN sia configurato nel .env.')
+      const errData = await res?.json().catch(() => null)
+      const detail = errData?.detail || 'Errore avvio ricerca. Verifica che APIFY_API_TOKEN sia configurato nel .env.'
+      setError(detail)
       setRunStatus('failed')
       return
     }
@@ -527,8 +538,24 @@ export default function ProspectingPage() {
     URL.revokeObjectURL(url)
   }
 
+  const availableProvinces = useMemo(() => {
+    return PROVINCE_ITALIANE.filter(p => {
+      const cities = (CITTA_PER_PROVINCIA[p] || []).map(c => c.toLowerCase())
+      const pLower = p.toLowerCase()
+      return savedLeads.some(l => {
+        const leadCity = (l.city || '').toLowerCase()
+        return leadCity === pLower || leadCity.includes(pLower) || cities.some(c => leadCity.includes(c))
+      })
+    })
+  }, [savedLeads])
+
   const filteredSavedLeads = savedLeads.filter(l => {
-    const matchProvincia = !filterProvincia || (l.city || '').toLowerCase().includes(filterProvincia.toLowerCase())
+    const matchProvincia = !filterProvincia || (() => {
+      const leadCity = (l.city || '').toLowerCase()
+      if (leadCity.includes(filterProvincia.toLowerCase())) return true
+      const cities = (CITTA_PER_PROVINCIA[filterProvincia] || []).map(c => c.toLowerCase())
+      return cities.some(c => leadCity.includes(c))
+    })()
     const matchStatus = !filterStatus || l.status === filterStatus
     const matchSettore = !filterSettore || (l.category || '').toLowerCase().includes(filterSettore.toLowerCase())
     return matchProvincia && matchStatus && matchSettore
@@ -641,25 +668,25 @@ export default function ProspectingPage() {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Dimensione azienda</label>
+              <label className="text-xs text-slate-400 mb-1 block">Valutazione minima</label>
               <select
-                value={employees}
-                onChange={e => setEmployees(e.target.value)}
+                value={minRating}
+                onChange={e => setMinRating(e.target.value)}
                 className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-electric-500"
               >
-                {EMPLOYEES_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {MIN_RATING_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Fascia di fatturato</label>
+              <label className="text-xs text-slate-400 mb-1 block">Numero minimo recensioni</label>
               <select
-                value={revenue}
-                onChange={e => setRevenue(e.target.value)}
+                value={minReviews}
+                onChange={e => setMinReviews(e.target.value)}
                 className="w-full bg-navy-900 border border-navy-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-electric-500"
               >
-                {REVENUE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {MIN_REVIEWS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
           </div>
@@ -924,7 +951,7 @@ export default function ProspectingPage() {
                 className="bg-navy-900 border border-navy-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-electric-500 min-w-[180px]"
               >
                 <option value="">Tutte le province</option>
-                {PROVINCE_ITALIANE.map(p => (
+                {availableProvinces.map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
