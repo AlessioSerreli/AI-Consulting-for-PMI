@@ -150,6 +150,15 @@ export default function ProspectingPage() {
 
   // ── Template ──
   async function loadTemplate() {
+    const saved = localStorage.getItem('outreach_template')
+    if (saved) {
+      try {
+        const { subject, body } = JSON.parse(saved)
+        if (subject) setTemplateSubject(subject)
+        if (body) setTemplateBody(body)
+        return
+      } catch {}
+    }
     const res = await fetch(`${API_URL}/prospecting/template`).catch(() => null)
     if (res?.ok) {
       const data = await res.json()
@@ -160,21 +169,20 @@ export default function ProspectingPage() {
 
   async function saveTemplate() {
     setTemplateSaving(true)
-    const res = await fetch(`${API_URL}/prospecting/template`, {
+    localStorage.setItem('outreach_template', JSON.stringify({ subject: templateSubject, body: templateBody }))
+    await fetch(`${API_URL}/prospecting/template`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subject: templateSubject, body: templateBody }),
     }).catch(() => null)
     setTemplateSaving(false)
-    if (res?.ok) {
-      setTemplateSaved(true)
-      setTimeout(() => setTemplateSaved(false), 2500)
-    }
+    setTemplateSaved(true)
+    setTimeout(() => setTemplateSaved(false), 2500)
   }
 
   // ── Leads ──
   async function loadSavedLeads() {
-    const res = await fetch(`${API_URL}/prospecting/leads?limit=200`).catch(() => null)
+    const res = await fetch(`${API_URL}/prospecting/leads?limit=1000`).catch(() => null)
     if (res?.ok) setSavedLeads(await res.json())
   }
 

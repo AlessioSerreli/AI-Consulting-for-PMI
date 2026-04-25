@@ -250,10 +250,12 @@ async def get_run_results(run_id: str, save: bool = Query(True), no_website_only
             continue
         leads.append(lead)
 
-    # Salva su Supabase (async httpx — bypasses sync DNS issue)
+    # Salva su Supabase solo se questo run_id non è già stato salvato
     if save and leads:
         try:
-            await sb_insert("prospecting_leads", leads)
+            existing = await sb_select("prospecting_leads", filters={"select": "id", "apify_run_id": f"eq.{run_id}"}, limit=1)
+            if not existing:
+                await sb_insert("prospecting_leads", leads)
         except Exception as e:
             print(f"[prospecting] Supabase insert failed (results still returned): {e}")
 
@@ -263,7 +265,7 @@ async def get_run_results(run_id: str, save: bool = Query(True), no_website_only
 @router.get("/leads")
 async def get_prospecting_leads(
     status: Optional[str] = Query(None),
-    limit: int = Query(50),
+    limit: int = Query(1000),
 ):
     filters: dict = {"select": "*", "order": "created_at.desc"}
     if status:
