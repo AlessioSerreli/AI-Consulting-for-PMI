@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 import os
-import asyncio
 import httpx
 from supabase import create_client
 
@@ -22,6 +21,63 @@ def get_supabase():
     return create_client(url, key)
 
 
+def _sb_headers() -> dict:
+    key = os.getenv("SUPABASE_SERVICE_KEY", "")
+    return {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+
+
+def _sb_url(table: str) -> str:
+    base = os.getenv("SUPABASE_URL", "").rstrip("/")
+    return f"{base}/rest/v1/{table}"
+
+
+async def sb_select(table: str, filters: dict | None = None, order: str | None = None, limit: int | None = None) -> list:
+    """Async SELECT via httpx — bypasses sync DNS issue."""
+    params: dict = {}
+    if order:
+        params["order"] = order
+    if limit:
+        params["limit"] = str(limit)
+    if filters:
+        params.update(filters)
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.get(_sb_url(table), headers=_sb_headers(), params=params)
+        r.raise_for_status()
+        return r.json()
+
+
+async def sb_insert(table: str, data: list | dict) -> list:
+    """Async INSERT via httpx."""
+    payload = data if isinstance(data, list) else [data]
+    async with httpx.AsyncClient() as client:
+        r = await client.post(_sb_url(table), headers=_sb_headers(), json=payload)
+        r.raise_for_status()
+        return r.json()
+
+
+async def sb_update(table: str, data: dict, eq_col: str, eq_val: str) -> list:
+    """Async UPDATE via httpx."""
+    params = {eq_col: f"eq.{eq_val}"}
+    async with httpx.AsyncClient() as client:
+        r = await client.patch(_sb_url(table), headers=_sb_headers(), params=params, json=data)
+        r.raise_for_status()
+        return r.json()
+
+
+async def sb_upsert(table: str, data: dict) -> list:
+    """Async UPSERT via httpx."""
+    headers = {**_sb_headers(), "Prefer": "resolution=merge-duplicates,return=representation"}
+    async with httpx.AsyncClient() as client:
+        r = await client.post(_sb_url(table), headers=headers, json=data)
+        r.raise_for_status()
+        return r.json()
+
+
 def get_apify_token():
     token = os.getenv("APIFY_API_TOKEN")
     if not token:
@@ -29,21 +85,45 @@ def get_apify_token():
     return token
 
 
+EMPLOYEES_KEYWORDS = {
+    "micro":   "micro impresa",
+    "piccola": "piccola impresa",
+    "media":   "media impresa",
+}
+
+REVENUE_LABELS = {
+    "<500k":   "fatturato sotto 500k",
+    "500k2m":  "fatturato 500k-2M",
+    "2m10m":   "fatturato 2M-10M",
+    ">10m":    "fatturato oltre 10M",
+}
+
+
 class SearchRequest(BaseModel):
-    query: str                          # es. "officina meccanica"
-    city: str                           # es. "Milano"
+    query: str                        # es. "officina meccanica"
+    city: str                         # es. "Milano"
     max_results: int = 20
-    min_reviews: Optional[int] = None   # numero minimo recensioni
-    min_rating: Optional[float] = None  # stelle minime (1.0–5.0)
+    employees: Optional[str] = None   # micro | piccola | media
+    revenue: Optional[str] = None     # <500k | 500k2m | 2m10m | >10m
 
 
 class LeadStatusUpdate(BaseModel):
-    status: str
+    status: Optional[str] = None
     notes: Optional[str] = None
+    contact_channel: Optional[str] = None
+    instagram_handle: Optional[str] = None
+    demo_url: Optional[str] = None
+
+
+class OutreachTemplate(BaseModel):
+    subject: str
+    body: str
 
 
 class BulkOutreachRequest(BaseModel):
     lead_ids: List[str]
+    subject_tmpl: Optional[str] = None
+    body_tmpl: Optional[str] = None
 
 
 class ManualLeadCreate(BaseModel):
@@ -61,38 +141,26 @@ class ManualLeadCreate(BaseModel):
 async def start_scraping(request: SearchRequest):
     token = get_apify_token()
 
-    search_string = f"{request.query} {request.city}"
+    # Arricchisce la query con la dimensione aziendale se specificata
+    parts = [request.query]
+    if request.employees and request.employees in EMPLOYEES_KEYWORDS:
+        parts.append(EMPLOYEES_KEYWORDS[request.employees])
+    search_string = f"{' '.join(parts)} {request.city}"
 
-    # Etichetta leggibile per log / risposta
-    extras = []
-    if request.min_rating:
-        extras.append(f"≥{request.min_rating}★")
-    if request.min_reviews:
-        extras.append(f"≥{request.min_reviews} rec.")
-    search_label = search_string + (f" | {' · '.join(extras)}" if extras else "")
-
-    apify_payload: dict = {
-        "searchStringsArray": [search_string],
-        "maxCrawledPlacesPerSearch": request.max_results,
-        "language": "it",
-        "countryCode": "it",
-        "maxImagesPerPlace": 0,
-        "maxReviewsPerPlace": 0,
-        "scrapeReviews": False,
-        "scrapeImageAuthors": False,
-        "scrapeContacts": False,
-        "includeWebResults": False,
-    }
-    if request.min_rating is not None:
-        apify_payload["minimumStars"] = request.min_rating
-    if request.min_reviews is not None:
-        apify_payload["minimumNumberOfReviews"] = request.min_reviews
+    # Etichetta leggibile per i log / risposta
+    revenue_label = REVENUE_LABELS.get(request.revenue or "", "")
+    search_label = search_string + (f" | fatturato: {revenue_label}" if revenue_label else "")
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             f"{APIFY_BASE}/acts/{APIFY_ACTOR}/runs",
             params={"token": token},
-            json=apify_payload,
+            json={
+                "searchStringsArray": [search_string],
+                "maxCrawledPlacesPerSearch": request.max_results,
+                "language": "it",
+                "countryCode": "it",
+            },
         )
         if resp.status_code not in (200, 201):
             raise HTTPException(500, f"Errore Apify: {resp.text}")
@@ -121,8 +189,20 @@ async def get_run_status(run_id: str):
         }
 
 
+DEFAULT_SUBJECT = "Ho visto {{company_name}} su Google Maps"
+DEFAULT_BODY = (
+    "Ciao {{owner_name}},\n\n"
+    "Ho notato che {{company_name}} non ha ancora un sito web.\n\n"
+    "Lavoro con piccole imprese per portarle online con strumenti AI, velocemente e senza costi fissi.\n\n"
+    "Se sei curioso/a, ci mettono 15 minuti — prenota una call gratuita qui:\n"
+    "{{calendly_url}}\n\n"
+    "Nessun impegno.\n\n"
+    "A presto,\nLuigi & Alessio\nRESTART"
+)
+
+
 @router.get("/runs/{run_id}/results")
-async def get_run_results(run_id: str, save: bool = Query(True)):
+async def get_run_results(run_id: str, save: bool = Query(True), no_website_only: bool = Query(False)):
     token = get_apify_token()
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -164,13 +244,18 @@ async def get_run_results(run_id: str, save: bool = Query(True)):
             "apify_run_id": run_id,
             "status": "new",
         }
-        if lead["company_name"]:
-            leads.append(lead)
+        if not lead["company_name"]:
+            continue
+        if no_website_only and lead.get("website"):
+            continue
+        leads.append(lead)
 
-    # Salva su Supabase
+    # Salva su Supabase (async httpx — bypasses sync DNS issue)
     if save and leads:
-        supabase = get_supabase()
-        supabase.table("prospecting_leads").insert(leads).execute()
+        try:
+            await sb_insert("prospecting_leads", leads)
+        except Exception as e:
+            print(f"[prospecting] Supabase insert failed (results still returned): {e}")
 
     return {"status": "SUCCEEDED", "count": len(leads), "results": leads}
 
@@ -180,51 +265,195 @@ async def get_prospecting_leads(
     status: Optional[str] = Query(None),
     limit: int = Query(50),
 ):
-    supabase = get_supabase()
-    q = (
-        supabase.table("prospecting_leads")
-        .select("*")
-        .order("created_at", desc=True)
-        .limit(limit)
-    )
+    filters: dict = {"select": "*", "order": "created_at.desc"}
     if status:
-        q = q.eq("status", status)
-    result = q.execute()
-    return result.data
+        filters["status"] = f"eq.{status}"
+    data = await sb_select("prospecting_leads", filters=filters, limit=limit)
+    return data
 
 
 @router.post("/leads")
 async def create_manual_lead(lead: ManualLeadCreate):
-    supabase = get_supabase()
     data = lead.model_dump(exclude_none=True)
     data["status"] = "new"
     data["source"] = "manual"
-    result = supabase.table("prospecting_leads").insert(data).execute()
-    return result.data[0]
+    result = await sb_insert("prospecting_leads", data)
+    return result[0] if result else {}
 
 
 @router.patch("/leads/{lead_id}")
 async def update_prospecting_lead(lead_id: str, update: LeadStatusUpdate):
-    supabase = get_supabase()
-    data = {"status": update.status}
-    if update.notes:
+    data: dict = {}
+    if update.status is not None:
+        data["status"] = update.status
+    if update.notes is not None:
         data["notes"] = update.notes
-    result = supabase.table("prospecting_leads").update(data).eq("id", lead_id).execute()
-    return result.data[0] if result.data else {}
+    if update.contact_channel is not None:
+        data["contact_channel"] = update.contact_channel
+    if update.instagram_handle is not None:
+        data["instagram_handle"] = update.instagram_handle
+    if update.demo_url is not None:
+        data["demo_url"] = update.demo_url
+    if not data:
+        return {}
+    result = await sb_update("prospecting_leads", data, "id", lead_id)
+
+    # Se lo stato diventa "contacted", inserisce nella Pipeline CRM se non già presente
+    if update.status == "contacted":
+        try:
+            rows = await sb_select("prospecting_leads", filters={"select": "*", "id": f"eq.{lead_id}"})
+            if rows:
+                lead = rows[0]
+                owner_email = lead.get("owner_email") or lead.get("email", "")
+                if owner_email:
+                    existing = await sb_select("leads", filters={"select": "id", "contact_email": f"eq.{owner_email}"})
+                    if not existing:
+                        await sb_insert("leads", {
+                            "company_name":  lead.get("company_name", ""),
+                            "contact_name":  lead.get("owner_name", ""),
+                            "contact_email": owner_email,
+                            "sector":        lead.get("category") or "",
+                            "status":        "new",
+                        })
+        except Exception:
+            pass
+
+    return result[0] if result else {}
 
 
-async def _send_outreach_impl(lead_id: str) -> dict:
+@router.delete("/leads/{lead_id}")
+async def delete_prospecting_lead(lead_id: str):
+    async with httpx.AsyncClient() as client:
+        r = await client.delete(
+            _sb_url("prospecting_leads"),
+            headers=_sb_headers(),
+            params={"id": f"eq.{lead_id}"},
+        )
+        r.raise_for_status()
+    return {"deleted": True}
+
+
+class BulkDeleteRequest(BaseModel):
+    lead_ids: List[str]
+
+
+@router.post("/leads/bulk-delete")
+async def bulk_delete_leads(request: BulkDeleteRequest):
+    if not request.lead_ids:
+        return {"deleted": 0}
+    ids_filter = "in.(" + ",".join(request.lead_ids) + ")"
+    async with httpx.AsyncClient() as client:
+        r = await client.delete(
+            _sb_url("prospecting_leads"),
+            headers=_sb_headers(),
+            params={"id": ids_filter},
+        )
+        r.raise_for_status()
+    return {"deleted": len(request.lead_ids)}
+
+
+@router.get("/template")
+async def get_outreach_template():
+    try:
+        rows = await sb_select("settings", filters={"select": "key,value", "key": "in.(outreach_template_subject,outreach_template_body)"})
+        settings = {row["key"]: row["value"] for row in (rows or [])}
+        return {
+            "subject": settings.get("outreach_template_subject", DEFAULT_SUBJECT),
+            "body":    settings.get("outreach_template_body",    DEFAULT_BODY),
+        }
+    except Exception:
+        return {"subject": DEFAULT_SUBJECT, "body": DEFAULT_BODY}
+
+
+@router.put("/template")
+async def update_outreach_template(template: OutreachTemplate):
+    now = datetime.utcnow().isoformat()
+    for key, value in [
+        ("outreach_template_subject", template.subject),
+        ("outreach_template_body",    template.body),
+    ]:
+        await sb_upsert("settings", {"key": key, "value": value, "updated_at": now})
+    return {"saved": True}
+
+
+class SendEmailRequest(BaseModel):
+    subject_tmpl: Optional[str] = None
+    body_tmpl: Optional[str] = None
+
+
+@router.post("/leads/{lead_id}/send-email")
+async def send_email_from_template(lead_id: str, req: SendEmailRequest = SendEmailRequest()):
+    """Invia email usando il template (passato nel body o default)."""
+    resend_key = os.getenv("RESEND_API_KEY")
+    if not resend_key:
+        raise HTTPException(500, "RESEND_API_KEY non configurata")
+
+    lead_rows = await sb_select("prospecting_leads", filters={"select": "*", "id": f"eq.{lead_id}"})
+    if not lead_rows:
+        raise HTTPException(404, "Lead non trovato")
+    lead = lead_rows[0]
+
+    owner_name   = lead.get("owner_name") or lead.get("company_name", "")
+    owner_email  = lead.get("owner_email") or lead.get("email", "")
+    company_name = lead.get("company_name", "")
+    first_name   = owner_name.split()[0] if owner_name else "Titolare"
+
+    if not owner_email:
+        raise HTTPException(400, "Nessuna email disponibile per questo lead")
+
+    subject_tmpl = req.subject_tmpl or DEFAULT_SUBJECT
+    body_tmpl    = req.body_tmpl    or DEFAULT_BODY
+
+    calendly_url = "https://calendly.com/aiconsultingpmi/30min"
+
+    def replace_vars(text: str) -> str:
+        return (text
+                .replace("{{company_name}}", company_name)
+                .replace("{{owner_name}}",   first_name)
+                .replace("{{calendly_url}}", calendly_url))
+
+    subject   = replace_vars(subject_tmpl)
+    body_text = replace_vars(body_tmpl)
+    html_body = (
+        "<!DOCTYPE html><html><body style=\"font-family:Georgia,serif;"
+        "max-width:600px;margin:40px auto;color:#333;line-height:1.8;font-size:16px;\">"
+        f"<div style=\"white-space:pre-line;\">{body_text}</div>"
+        "</body></html>"
+    )
+
+    from_email = os.getenv("FROM_EMAIL", "onboarding@resend.dev")
+    to_email = owner_email
+    if from_email == "onboarding@resend.dev":
+        to_email = os.getenv("ADMIN_EMAIL", "aseeerreli@gmail.com")
+
+    import resend as _resend
+    _resend.api_key = resend_key
+    _resend.Emails.send({
+        "from":    from_email,
+        "to":      [to_email],
+        "subject": subject,
+        "html":    html_body,
+    })
+
+    await sb_update("prospecting_leads", {
+        "status":           "contacted",
+        "outreach_sent_at": datetime.utcnow().isoformat(),
+    }, "id", lead_id)
+
+    return {"sent": True, "sent_to": owner_email, "subject": subject}
+
+
+async def _send_outreach_impl(lead_id: str, subject_tmpl: Optional[str] = None, body_tmpl: Optional[str] = None) -> dict:
     """Logica core: invia email outreach + aggiorna DB. Raises Exception on failure."""
     resend_key = os.getenv("RESEND_API_KEY")
     if not resend_key:
         raise ValueError("RESEND_API_KEY non configurata")
 
-    supabase = get_supabase()
-    result = supabase.table("prospecting_leads").select("*").eq("id", lead_id).execute()
-    if not result.data:
+    rows = await sb_select("prospecting_leads", filters={"select": "*", "id": f"eq.{lead_id}"})
+    if not rows:
         raise ValueError(f"Lead {lead_id} non trovato")
 
-    lead = result.data[0]
+    lead = rows[0]
     owner_name   = lead.get("owner_name") or lead.get("company_name", "")
     owner_email  = lead.get("owner_email") or lead.get("email", "")
     company_name = lead.get("company_name", "")
@@ -233,142 +462,61 @@ async def _send_outreach_impl(lead_id: str) -> dict:
     if not owner_email:
         raise ValueError("Nessuna email disponibile (esegui prima l'enrich)")
 
-    from urllib.parse import quote
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    survey_url = (
-        f"{frontend_url}/survey"
-        f"?ref={lead_id}"
-        f"&name={quote(owner_name)}"
-        f"&company={quote(company_name)}"
-        f"&email={quote(owner_email)}"
+    subject_tmpl = subject_tmpl or DEFAULT_SUBJECT
+    body_tmpl    = body_tmpl    or DEFAULT_BODY
+
+    calendly_url = "https://calendly.com/aiconsultingpmi/30min"
+
+    def _rv(text: str) -> str:
+        return (text
+                .replace("{{company_name}}", company_name)
+                .replace("{{owner_name}}",   first_name)
+                .replace("{{calendly_url}}", calendly_url))
+
+    subject   = _rv(subject_tmpl)
+    body_text = _rv(body_tmpl)
+    html_body = (
+        "<!DOCTYPE html><html><body style=\"font-family:Georgia,serif;"
+        "max-width:600px;margin:40px auto;color:#333;line-height:1.8;font-size:16px;\">"
+        f"<div style=\"white-space:pre-line;\">{body_text}</div>"
+        "</body></html>"
     )
 
-    html = f"""<!DOCTYPE html>
-<html lang="it"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:Georgia,serif;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:40px 20px;">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" border="0"
-       style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 40px rgba(0,0,0,0.10);">
-
-  <tr><td style="background:#0A0F1E;padding:48px 48px 40px;">
-    <p style="margin:0 0 28px;font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:#F59E0B;font-weight:700;">AI · PMI ITALIA</p>
-    <p style="margin:0 0 16px;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(148,163,184,0.7);">Analisi gratuita</p>
-    <h1 style="margin:0;font-size:32px;font-weight:700;line-height:1.2;color:#fff;">
-      Scopri dove stai perdendo<br><span style="color:#F59E0B;">tempo e denaro</span> ogni giorno.
-    </h1>
-    <div style="width:48px;height:3px;background:#F59E0B;border-radius:2px;margin-top:28px;"></div>
-  </td></tr>
-
-  <tr><td style="padding:48px 48px 0;background:#fff;">
-    <p style="margin:0 0 24px;font-size:16px;color:#374151;line-height:1.7;">
-      Ciao <strong style="color:#0A0F1E;">{first_name}</strong>,
-    </p>
-    <p style="margin:0 0 24px;font-size:16px;color:#4B5563;line-height:1.8;">
-      Ho analizzato <strong style="color:#0A0F1E;">{company_name}</strong> e penso ci siano margini concreti
-      per ridurre il lavoro manuale e aumentare l'efficienza operativa con strumenti AI accessibili.
-    </p>
-    <p style="margin:0 0 24px;font-size:16px;color:#4B5563;line-height:1.8;">
-      Ho preparato una <strong style="color:#0A0F1E;">diagnosi gratuita</strong> — 5 minuti di questionario,
-      e ricevi un report personalizzato con il tuo punteggio di efficienza e 3 azioni concrete da implementare subito.
-    </p>
-
-    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
-      <tr><td style="padding:16px 20px;background:#F8FAFC;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;">
-        <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
-          <td width="28" style="vertical-align:top;padding-top:1px;">
-            <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">1</div>
-          </td>
-          <td style="font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
-            Il tuo <strong style="color:#0A0F1E;">punteggio di efficienza operativa</strong> vs le PMI del tuo settore
-          </td>
-        </tr></table>
-      </td></tr>
-      <tr><td style="height:8px;"></td></tr>
-      <tr><td style="padding:16px 20px;background:#F8FAFC;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;">
-        <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
-          <td width="28" style="vertical-align:top;padding-top:1px;">
-            <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">2</div>
-          </td>
-          <td style="font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
-            Le <strong style="color:#0A0F1E;">3 aree critiche</strong> con i quick win attivabili subito
-          </td>
-        </tr></table>
-      </td></tr>
-      <tr><td style="height:8px;"></td></tr>
-      <tr><td style="padding:16px 20px;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;">
-        <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
-          <td width="28" style="vertical-align:top;padding-top:1px;">
-            <div style="width:20px;height:20px;background:#F59E0B;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:bold;color:#0A0F1E;">★</div>
-          </td>
-          <td style="font-size:15px;color:#374151;line-height:1.6;padding-left:12px;">
-            Il <strong style="color:#0A0F1E;">Certificato di Efficienza Operativa</strong> — completamente gratuito
-          </td>
-        </tr></table>
-      </td></tr>
-    </table>
-  </td></tr>
-
-  <tr><td style="padding:0 48px 48px;background:#fff;">
-    <table cellpadding="0" cellspacing="0" border="0"><tr>
-      <td style="background:#0A0F1E;border-radius:10px;padding:18px 36px;">
-        <a href="{survey_url}" style="font-size:16px;font-weight:700;color:#F59E0B;text-decoration:none;letter-spacing:0.02em;">
-          Inizia la diagnosi gratuita →
-        </a>
-      </td>
-    </tr></table>
-    <p style="margin:12px 0 0;font-size:12px;color:#9CA3AF;">Oppure rispondi a questa email. Ti rispondo entro 24 ore.</p>
-  </td></tr>
-
-  <tr><td style="padding:0 48px;"><div style="height:1px;background:#E5E7EB;"></div></td></tr>
-  <tr><td style="padding:36px 48px;background:#fff;">
-    <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#0A0F1E;">Luigi Negro &amp; Alessio Serreli</p>
-    <p style="margin:0 0 16px;font-size:13px;color:#6B7280;text-transform:uppercase;letter-spacing:0.05em;">AI Expert · Ottimizzazione Processi PMI</p>
-    <table cellpadding="0" cellspacing="0" border="0"><tr>
-      <td style="padding-right:24px;"><a href="tel:+393299576151" style="font-size:14px;color:#4B5563;text-decoration:none;">📞 +39 329 957 6151</a></td>
-      <td><a href="mailto:luigi@aiconsultingpmi.it" style="font-size:14px;color:#F59E0B;text-decoration:none;">✉️ luigi@aiconsultingpmi.it</a></td>
-    </tr></table>
-  </td></tr>
-  <tr><td style="background:#0A0F1E;padding:20px 48px;">
-    <p style="margin:0;font-size:11px;color:rgba(148,163,184,0.5);letter-spacing:0.08em;text-transform:uppercase;">
-      © 2025 AI.PMI Italia — Puoi rispondere a questa email in qualsiasi momento
-    </p>
-  </td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>"""
+    from_email = os.getenv("FROM_EMAIL", "onboarding@resend.dev")
+    to_email = owner_email
+    if from_email == "onboarding@resend.dev":
+        to_email = os.getenv("ADMIN_EMAIL", "aseeerreli@gmail.com")
 
     import resend
     resend.api_key = resend_key
     resend.Emails.send({
-        "from": os.getenv("FROM_EMAIL", "onboarding@resend.dev"),
-        "to": [owner_email],
-        "subject": f"Ho analizzato {company_name} — diagnosi gratuita per te",
-        "html": html,
+        "from": from_email,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_body,
     })
 
-    supabase.table("prospecting_leads").update({
+    await sb_update("prospecting_leads", {
         "status": "contacted",
         "outreach_sent_at": datetime.utcnow().isoformat(),
-    }).eq("id", lead_id).execute()
+    }, "id", lead_id)
 
     # Inserisce il lead nella Pipeline CRM (leads) se non esiste già
-    existing = supabase.table("leads").select("id").eq("contact_email", owner_email).execute()
-    if existing.data:
-        already_in_pipeline = True
-    else:
-        already_in_pipeline = False
-        try:
-            supabase.table("leads").insert({
+    already_in_pipeline = False
+    try:
+        existing = await sb_select("leads", filters={"select": "id", "contact_email": f"eq.{owner_email}"})
+        if existing:
+            already_in_pipeline = True
+        else:
+            await sb_insert("leads", {
                 "company_name": company_name,
                 "contact_name": owner_name,
                 "contact_email": owner_email,
                 "sector": lead.get("category") or "",
                 "status": "new",
-            }).execute()
-        except Exception:
-            pass
+            })
+    except Exception:
+        pass
 
     return {"sent_to": owner_email, "survey_url": survey_url, "already_in_pipeline": already_in_pipeline}
 
@@ -393,7 +541,7 @@ async def bulk_outreach(request: BulkOutreachRequest):
     results: dict = {"sent": [], "failed": []}
     for lead_id in request.lead_ids:
         try:
-            await _send_outreach_impl(lead_id)
+            await _send_outreach_impl(lead_id, subject_tmpl=request.subject_tmpl, body_tmpl=request.body_tmpl)
             results["sent"].append(lead_id)
         except Exception as e:
             results["failed"].append({"id": lead_id, "error": str(e)})
@@ -464,7 +612,7 @@ async def _search_ddg_emails(company_name: str, city: str, client: httpx.AsyncCl
                 if not page_url.startswith('http'):
                     page_url = 'https://' + page_url
                 try:
-                    page = await client.get(page_url, headers=headers, follow_redirects=True, timeout=5)
+                    page = await client.get(page_url, headers=headers, follow_redirects=True, timeout=8)
                     if page.status_code == 200:
                         found.extend(EMAIL_REGEX.findall(page.text))
                 except Exception:
@@ -501,7 +649,7 @@ async def _scrape_website_emails(website: str, client: httpx.AsyncClient) -> lis
     domain = _extract_domain(website) or ''
     for url in pages_to_try:
         try:
-            resp = await client.get(url, headers=headers, follow_redirects=True, timeout=5)
+            resp = await client.get(url, headers=headers, follow_redirects=True, timeout=8)
             if resp.status_code == 200:
                 emails = EMAIL_REGEX.findall(resp.text)
                 found.extend(emails)
@@ -541,12 +689,11 @@ async def enrich_lead(lead_id: str):
     2. Hunter.io domain-search — per siti strutturati
     Salva la prima email trovata su Supabase.
     """
-    supabase = get_supabase()
-    result = supabase.table("prospecting_leads").select("*").eq("id", lead_id).execute()
-    if not result.data:
+    rows = await sb_select("prospecting_leads", filters={"select": "*", "id": f"eq.{lead_id}"})
+    if not rows:
         raise HTTPException(404, "Lead non trovato")
 
-    lead = result.data[0]
+    lead = rows[0]
     website = lead.get("website", "")
     domain  = _extract_domain(website)
     source  = None
@@ -612,7 +759,7 @@ async def enrich_lead(lead_id: str):
         return {"enriched": False, "domain": domain, "reason": "Nessuna email trovata (sito non scrapabile e Hunter non ha risultati)"}
 
     try:
-        supabase.table("prospecting_leads").update(contact).eq("id", lead_id).execute()
+        await sb_update("prospecting_leads", contact, "id", lead_id)
         saved = True
     except Exception:
         saved = False
@@ -620,92 +767,71 @@ async def enrich_lead(lead_id: str):
     return {"enriched": True, "saved": saved, "source": source, "domain": domain, "contact": contact}
 
 
-async def _enrich_single(lead: dict, client: httpx.AsyncClient, hunter_key: str) -> tuple[str, bool]:
-    """
-    Arricchisce un singolo lead con la cascata sito → DDG → Hunter.
-    Ritorna (lead_id, enriched: bool).
-    """
-    supabase = get_supabase()
-    lead_id      = lead["id"]
-    website      = lead.get("website", "")
-    company_name = lead.get("company_name", "")
-    city         = lead.get("city", "")
-    domain       = _extract_domain(website)
-    contact: dict = {}
-
-    # Step 1: scraping sito
-    if website:
-        try:
-            scraped = await _scrape_website_emails(website, client)
-            if scraped:
-                contact = {"owner_email": scraped[0], "hunter_domain": domain or ""}
-        except Exception:
-            pass
-
-    # Step 2: DuckDuckGo
-    if not contact and company_name:
-        try:
-            ddg_emails = await _search_ddg_emails(company_name, city, client)
-            if ddg_emails:
-                contact = {"owner_email": ddg_emails[0], "hunter_domain": domain or ""}
-        except Exception:
-            pass
-
-    # Step 3: Hunter.io fallback
-    if not contact and domain and hunter_key:
-        try:
-            resp = await client.get(
-                f"{HUNTER_BASE}/domain-search",
-                params={"domain": domain, "api_key": hunter_key, "limit": 3},
-                timeout=8,
-            )
-            emails = resp.json().get("data", {}).get("emails", [])
-            if emails:
-                best = emails[0]
-                contact = {
-                    "owner_name":    f"{best.get('first_name','')} {best.get('last_name','')}".strip(),
-                    "owner_email":   best.get("value", ""),
-                    "hunter_domain": domain,
-                }
-        except Exception:
-            pass
-
-    if not contact:
-        return lead_id, False
-
-    try:
-        supabase.table("prospecting_leads").update(contact).eq("id", lead_id).execute()
-        return lead_id, True
-    except Exception:
-        return lead_id, False
-
-
 @router.post("/leads/enrich-all")
 async def enrich_all_leads(limit: int = Query(10)):
     """
-    Arricchisce i primi N lead non ancora enriched in parallelo.
-    Tutti i lead vengono processati contemporaneamente — velocità ~10x rispetto alla versione sequenziale.
+    Arricchisce i primi N lead non ancora enriched.
+    Usa scraping sito + Hunter.io in cascata per massimizzare il tasso di successo.
     """
-    supabase = get_supabase()
-    result = (
-        supabase.table("prospecting_leads")
-        .select("id, company_name, city, website, owner_email")
-        .is_("owner_email", "null")
-        .limit(limit)
-        .execute()
+    leads = await sb_select(
+        "prospecting_leads",
+        filters={"select": "id,company_name,city,website,owner_email", "owner_email": "is.null"},
+        limit=limit,
     )
-    leads = result.data or []
-    hunter_key = os.getenv("HUNTER_API_KEY", "")
-
-    async with httpx.AsyncClient(timeout=12) as client:
-        tasks = [_enrich_single(lead, client, hunter_key) for lead in leads]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
+    hunter_key = os.getenv("HUNTER_API_KEY")
     enriched, skipped = [], []
-    for res in results:
-        if isinstance(res, Exception):
-            continue
-        lead_id, ok = res
-        (enriched if ok else skipped).append(lead_id)
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        for lead in leads:
+            website      = lead.get("website", "")
+            company_name = lead.get("company_name", "")
+            city         = lead.get("city", "")
+            domain       = _extract_domain(website)
+            contact      = {}
+
+            # Step 1: scraping sito
+            if website:
+                try:
+                    scraped = await _scrape_website_emails(website, client)
+                    if scraped:
+                        contact = {"owner_email": scraped[0], "hunter_domain": domain or ""}
+                except Exception:
+                    pass
+
+            # Step 2: DuckDuckGo search
+            if not contact and company_name:
+                try:
+                    ddg_emails = await _search_ddg_emails(company_name, city, client)
+                    if ddg_emails:
+                        contact = {"owner_email": ddg_emails[0], "hunter_domain": domain or ""}
+                except Exception:
+                    pass
+
+            # Step 3: Hunter.io fallback
+            if not contact and domain and hunter_key:
+                try:
+                    resp = await client.get(
+                        f"{HUNTER_BASE}/domain-search",
+                        params={"domain": domain, "api_key": hunter_key, "limit": 3},
+                    )
+                    emails = resp.json().get("data", {}).get("emails", [])
+                    if emails:
+                        best = emails[0]
+                        contact = {
+                            "owner_name":  f"{best.get('first_name','')} {best.get('last_name','')}".strip(),
+                            "owner_email": best.get("value", ""),
+                            "hunter_domain": domain,
+                        }
+                except Exception:
+                    pass
+
+            if contact:
+                try:
+                    await sb_update("prospecting_leads", contact, "id", lead["id"])
+                    enriched.append(lead["id"])
+                except Exception:
+                    skipped.append(lead["id"])
+            else:
+                skipped.append(lead["id"])
 
     return {"enriched": len(enriched), "skipped": len(skipped), "enriched_ids": enriched}
